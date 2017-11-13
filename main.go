@@ -2,7 +2,8 @@ package main
 
 import (
 	"os"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1/altsrc"
 	"fmt"
 	"errors"
 	"path"
@@ -30,6 +31,7 @@ const OPTION_TAG = "tag"
 const OPTION_GITHUB_TOKEN = "github-oauth-token"
 const OPTION_SOURCE_PATH = "source-path"
 const OPTION_RELEASE_ASSET = "release-asset"
+const OPTION_CFG_YAML = "cfg-from-yaml"
 
 const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
 
@@ -37,40 +39,47 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "fetch"
 	app.Usage = "fetch makes it easy to download files, folders, and release assets from a specific git commit, branch, or tag of public and private GitHub repos."
-	app.UsageText = "fetch [global options] <local-download-path>\n   (See https://github.com/gruntwork-io/fetch for examples, argument definitions, and additional docs.)"
+	app.UsageText = "fetch [global options] <local-download-path>\n   (See https://github.com/opsgang/fetch for examples, argument definitions, and additional docs.)"
 	app.Version = VERSION
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name: OPTION_REPO,
+	flags := []cli.Flag{
+		altsrc.NewStringFlag(cli.StringFlag{
+			Name:  OPTION_REPO,
 			Usage: "Required. Fully qualified URL of the GitHub repo.",
-		},
-		cli.StringFlag{
-			Name: OPTION_COMMIT,
+		}),
+		altsrc.NewStringFlag(cli.StringFlag{
+			Name:  OPTION_COMMIT,
 			Usage: "The specific git commit SHA to download. If specified, will override --branch and --tag.",
-		},
-		cli.StringFlag{
-			Name: OPTION_BRANCH,
+		}),
+		altsrc.NewStringFlag(cli.StringFlag{
+			Name:  OPTION_BRANCH,
 			Usage: "The git branch from which to download the commit; the latest commit in the branch will be used. If specified, will override --tag.",
-		},
-		cli.StringFlag{
-			Name: OPTION_TAG,
+		}),
+		altsrc.NewStringFlag(cli.StringFlag{
+			Name:  OPTION_TAG,
 			Usage: "The specific git tag to download, expressed with Version Constraint Operators.\n\tIf left blank, fetch will download the latest git tag.\n\tSee https://github.com/gruntwork-io/fetch#version-constraint-operators for examples.",
-		},
-		cli.StringFlag{
-			Name: OPTION_GITHUB_TOKEN,
-			Usage: "A GitHub Personal Access Token, which is required for downloading from private repos.",
+		}),
+		altsrc.NewStringFlag(cli.StringFlag{
+			Name:   OPTION_GITHUB_TOKEN,
+			Usage:  "A GitHub Personal Access Token, which is required for downloading from private repos.",
 			EnvVar: ENV_VAR_GITHUB_TOKEN,
-		},
-		cli.StringSliceFlag{
-			Name: OPTION_SOURCE_PATH,
+		}),
+		altsrc.NewStringSliceFlag(cli.StringSliceFlag{
+			Name:  OPTION_SOURCE_PATH,
 			Usage: "The source path to download from the repo. If this or --release-asset aren't specified, all files are downloaded. Can be specified more than once.",
-		},
-		cli.StringSliceFlag{
-			Name: OPTION_RELEASE_ASSET,
+		}),
+		altsrc.NewStringSliceFlag(cli.StringSliceFlag{
+			Name:  OPTION_RELEASE_ASSET,
 			Usage: "The name of a release asset--that is, a binary uploaded to a GitHub Release--to download. Only works with --tag. Can be specified more than once.",
+		}),
+		cli.StringFlag{
+			Name:  OPTION_CFG_YAML,
+			Usage: "/path/to/config/in/yaml",
 		},
 	}
+
+	app.Flags = flags
+	app.Before = altsrc.InitInputSourceWithContext(flags, altsrc.NewYamlSourceFromFlagFunc(OPTION_CFG_YAML))
 
 	app.Action = runFetchWrapper
 

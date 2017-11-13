@@ -2,3 +2,4 @@ package: github.com/opsgang/fetch
 import:
 - package: github.com/urfave/cli
 - package: github.com/hashicorp/go-version
+- package: gopkg.in/yaml.v2
