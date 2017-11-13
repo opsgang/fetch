@@ -73,22 +73,23 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	//      file that will eventually get written = <localPath>/folder/file1.txt
 
 	// By convention, the first file in the zip file is the top-level directory
-	pathPrefix := r.File[0].Name
+	pathPrefixTLD := r.File[0].Name
 
 	// Add the path from which we will extract files to the path prefix so we can exclude the appropriate files
-	pathPrefix = filepath.Join(pathPrefix, filesToExtractFromZipPath)
+	pathPrefix := filepath.Join(pathPrefixTLD, filesToExtractFromZipPath)
 
 	// Iterate through the files in the archive,
 	// printing some of their contents.
 	for _, f := range r.File {
-
 		// If the given file is in the filesToExtractFromZipPath, proceed
 		if strings.Index(f.Name, pathPrefix) == 0 {
 
+		    fmt.Printf("relevant file: %s prefix(%s)\n", f.Name, pathPrefix)
 			if f.FileInfo().IsDir() {
 				// Create a directory
 				os.MkdirAll(filepath.Join(localPath, strings.TrimPrefix(f.Name, pathPrefix)), 0777)
 			} else {
+
 				// Read the file into a byte array
 				readCloser, err := f.Open()
 				if err != nil {
@@ -100,8 +101,14 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 					return fmt.Errorf("Failed to read file %s: %s", f.Name, err)
 				}
 
+				destPath := filepath.Join(localPath, strings.TrimPrefix(f.Name, pathPrefix))
+				// when source-path is a single file we should write inside destination-dir
+				// NOT instead of destination-dir!
+				if f.Name == pathPrefix {
+					destPath = filepath.Join(localPath, strings.TrimPrefix(f.Name, pathPrefixTLD))
+				}
 				// Write the file
-				err = ioutil.WriteFile(filepath.Join(localPath, strings.TrimPrefix(f.Name, pathPrefix)), byteArray, 0644)
+				err = ioutil.WriteFile(destPath, byteArray, 0644)
 				if err != nil {
 					return fmt.Errorf("Failed to write file: %s", err)
 				}

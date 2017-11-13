@@ -1,0 +1,6 @@
+repo: https://github.com/opsgang/docker_devbox_aws
+tag: 1.0.7
+destination-dir: /var/tmp/booobo
+source-path:
+  - /assets
+  - /shippable.yml

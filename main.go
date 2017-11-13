@@ -13,14 +13,21 @@ import (
 // http://stackoverflow.com/a/11355611/483528
 var VERSION string
 
+// Ordered list of all fetches to perform
+/*
+type Fetches struct {
+	Options []FetchOptions{}
+}
+*/
+
 type FetchOptions struct {
-	RepoUrl string
-	CommitSha string
-	BranchName string
-	TagConstraint string
-	GithubToken string
-	SourcePaths []string
-	ReleaseAssets []string
+	RepoUrl           string
+	CommitSha         string
+	BranchName        string
+	TagConstraint     string
+	GithubToken       string
+	SourcePaths       []string
+	ReleaseAssets     []string
 	LocalDownloadPath string
 }
 
@@ -32,6 +39,7 @@ const OPTION_GITHUB_TOKEN = "github-oauth-token"
 const OPTION_SOURCE_PATH = "source-path"
 const OPTION_RELEASE_ASSET = "release-asset"
 const OPTION_CFG_YAML = "cfg-from-yaml"
+const OPTION_LOCAL_PATH = "destination-dir"
 
 const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
 
@@ -39,7 +47,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "fetch"
 	app.Usage = "fetch makes it easy to download files, folders, and release assets from a specific git commit, branch, or tag of public and private GitHub repos."
-	app.UsageText = "fetch [global options] <local-download-path>\n   (See https://github.com/opsgang/fetch for examples, argument definitions, and additional docs.)"
+	app.UsageText = "fetch [global options] <destination-dir>\n   fetch --cfg-from-yaml /path/to/my/cfg.yml [<destination-dir>]\nSee https://github.com/opsgang/fetch for additional docs."
 	app.Version = VERSION
 
 	flags := []cli.Flag{
@@ -64,6 +72,10 @@ func main() {
 			Usage:  "A GitHub Personal Access Token, which is required for downloading from private repos.",
 			EnvVar: ENV_VAR_GITHUB_TOKEN,
 		}),
+		altsrc.NewStringFlag(cli.StringFlag{
+			Name:   OPTION_LOCAL_PATH,
+			Usage:  "Path to local destination dir for downloaded assets",
+		}),
 		altsrc.NewStringSliceFlag(cli.StringSliceFlag{
 			Name:  OPTION_SOURCE_PATH,
 			Usage: "The source path to download from the repo. If this or --release-asset aren't specified, all files are downloaded. Can be specified more than once.",
@@ -74,7 +86,7 @@ func main() {
 		}),
 		cli.StringFlag{
 			Name:  OPTION_CFG_YAML,
-			Usage: "/path/to/config/in/yaml",
+			Usage: "/path/to/config/in/yaml (using this means all other cmd line args are ignored)",
 		},
 	}
 
@@ -164,6 +176,10 @@ func parseOptions(c *cli.Context) FetchOptions {
 		fmt.Printf("DEPRECATION WARNING: passing source paths via command-line args is deprecated. Please use the --%s option instead!\n", OPTION_SOURCE_PATH)
 		sourcePaths = []string{c.Args().First()}
 		localDownloadPath = c.Args().Get(1)
+	}
+
+	if localDownloadPath == "" {
+		localDownloadPath = c.String(OPTION_LOCAL_PATH)
 	}
 
 	return FetchOptions{
