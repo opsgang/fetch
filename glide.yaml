@@ -1,4 +1,4 @@
-package: github.com/gruntwork-io/fetch
+package: github.com/opsgang/fetch
 import:
-- package: github.com/codegangsta/cli
+- package: github.com/urfave/cli
 - package: github.com/hashicorp/go-version

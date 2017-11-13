@@ -17,10 +17,10 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 		gitHubOAuthToken string
 	}{
 		// Test on a public repo whose sole purpose is to be a test fixture for this tool
-		{"https://github.com/gruntwork-io/fetch-test-public", "v0.0.1", "v0.0.3", ""},
+		{"https://github.com/opsgang/fetch", "v0.0.1", "v0.1.1", ""},
 
 		// Private repo equivalent
-		{"https://github.com/gruntwork-io/fetch-test-private", "v0.0.2", "v0.0.2", os.Getenv("GITHUB_OAUTH_TOKEN")},
+		{"https://github.com/opsgang/docker_aws_env", "1.0.0", "1.1.1", os.Getenv("GITHUB_OAUTH_TOKEN")},
 	}
 
 	for _, tc := range cases {
@@ -114,24 +114,17 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 
 	token := os.Getenv("GITHUB_OAUTH_TOKEN")
 
-	expectedFetchTestPrivateRelease := GitHubReleaseApiResponse{
-		Id: 3064041,
-		Url: "https://api.github.com/repos/gruntwork-io/fetch-test-private/releases/3064041",
-		Name: "v0.0.2",
-		Assets: []GitHubReleaseAsset{
-			{
-				Id: 1872521,
-				Url: "https://api.github.com/repos/gruntwork-io/fetch-test-private/releases/assets/1872521",
-				Name: "test-asset.png",
-			},
-		},
+	expectedReleaseAsset := GitHubReleaseAsset{
+		Id:   5306019,
+		Url:  "https://api.github.com/repos/opsgang/fetch/releases/assets/5306019",
+		Name: "fetch-v0.1.1.tgz",
 	}
 
 	expectedFetchTestPublicRelease := GitHubReleaseApiResponse{
-		Id: 3065803,
-		Url: "https://api.github.com/repos/gruntwork-io/fetch-test-public/releases/3065803",
-		Name: "v0.0.3",
-		Assets: []GitHubReleaseAsset{},
+		Id: 8471364,
+		Url: "https://api.github.com/repos/opsgang/fetch/releases/8471364",
+		Name: "static binary for amd64 linux",
+		Assets: append([]GitHubReleaseAsset{}, expectedReleaseAsset),
 	}
 
 	cases := []struct {
@@ -140,8 +133,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 		tag       string
 		expected  GitHubReleaseApiResponse
 	}{
-		{"https://github.com/gruntwork-io/fetch-test-private", token, "v0.0.2", expectedFetchTestPrivateRelease},
-		{"https://github.com/gruntwork-io/fetch-test-public", "", "v0.0.3", expectedFetchTestPublicRelease},
+		{"https://github.com/opsgang/fetch", token, "v0.1.1", expectedFetchTestPublicRelease},
 	}
 
 	for _, tc := range cases {
@@ -172,8 +164,7 @@ func TestDownloadReleaseAsset(t *testing.T) {
 		tag       string
 		assetId   int
 	}{
-		{"https://github.com/gruntwork-io/fetch-test-private", token, "v0.0.2", 1872521},
-		{"https://github.com/gruntwork-io/fetch-test-public", "", "v0.0.2", 1872641},
+		{"https://github.com/opsgang/fetch", token, "v0.1.1", 5306019},
 	}
 
 	for _, tc := range cases {
