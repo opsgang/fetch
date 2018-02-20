@@ -20,6 +20,7 @@ type FetchOptions struct {
 	GithubToken string
 	SourcePaths []string
 	ReleaseAssets []string
+	Decompress bool
 	LocalDownloadPath string
 }
 
@@ -30,6 +31,7 @@ const OPTION_TAG = "tag"
 const OPTION_GITHUB_TOKEN = "github-oauth-token"
 const OPTION_SOURCE_PATH = "source-path"
 const OPTION_RELEASE_ASSET = "release-asset"
+const OPTION_DECOMPRESS = "decompress"
 
 const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
 
@@ -69,6 +71,10 @@ func main() {
 		cli.StringSliceFlag{
 			Name: OPTION_RELEASE_ASSET,
 			Usage: "The name of a release asset--that is, a binary uploaded to a GitHub Release--to download. Only works with --tag. Can be specified more than once.",
+		},
+		cli.BoolFlag{
+			Name: OPTION_DECOMPRESS,
+			Usage: "Whether to unarchive/decompress a release asset. Only works with --release-asset. Only works with .tgz and .tar.gz files.",
 		},
 	}
 
@@ -165,6 +171,7 @@ func parseOptions(c *cli.Context) FetchOptions {
 		GithubToken: c.String(OPTION_GITHUB_TOKEN),
 		SourcePaths: sourcePaths,
 		ReleaseAssets: c.StringSlice(OPTION_RELEASE_ASSET),
+		Decompress: c.Bool(OPTION_DECOMPRESS),
 		LocalDownloadPath: localDownloadPath,
 	}
 }
@@ -184,6 +191,10 @@ func validateOptions(options FetchOptions) error {
 
 	if len(options.ReleaseAssets) > 0 && options.TagConstraint == "" {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_RELEASE_ASSET, OPTION_TAG)
+	}
+
+	if len(options.ReleaseAssets) == 0 && options.Decompress {
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_DECOMPRESS, OPTION_RELEASE_ASSET)
 	}
 
 	return nil

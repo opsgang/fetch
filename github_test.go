@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
 	"testing"
 	"os"
 	"reflect"
@@ -20,11 +21,12 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 		{"https://github.com/opsgang/fetch", "v0.0.1", "v0.1.1", ""},
 
 		// Private repo equivalent
-		{"https://github.com/opsgang/docker_aws_env", "1.0.0", "1.1.1", os.Getenv("GITHUB_OAUTH_TOKEN")},
+		{"https://github.com/opsgang/docker_aws_env", "1.0.0", "1.2.1", os.Getenv("GITHUB_OAUTH_TOKEN")},
 	}
 
 	for _, tc := range cases {
 		releases, err := FetchTags(tc.repoUrl, tc.gitHubOAuthToken)
+		fmt.Printf("releases: %v\n", releases)
 		if err != nil {
 			t.Fatalf("error fetching releases: %s", err)
 		}
@@ -115,9 +117,9 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 	token := os.Getenv("GITHUB_OAUTH_TOKEN")
 
 	expectedReleaseAsset := GitHubReleaseAsset{
-		Id:   5306019,
-		Url:  "https://api.github.com/repos/opsgang/fetch/releases/assets/5306019",
-		Name: "fetch-v0.1.1.tgz",
+		Id:   5354782,
+		Url:  "https://api.github.com/repos/opsgang/fetch/releases/assets/5354782",
+		Name: "fetch.tgz",
 	}
 
 	expectedFetchTestPublicRelease := GitHubReleaseApiResponse{
@@ -164,7 +166,7 @@ func TestDownloadReleaseAsset(t *testing.T) {
 		tag       string
 		assetId   int
 	}{
-		{"https://github.com/opsgang/fetch", token, "v0.1.1", 5306019},
+		{"https://github.com/opsgang/fetch", token, "v0.1.1", 5354782},
 	}
 
 	for _, tc := range cases {
