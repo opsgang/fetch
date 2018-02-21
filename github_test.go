@@ -1,7 +1,6 @@
 package main
 
 import (
-    "fmt"
 	"testing"
 	"os"
 	"reflect"
@@ -26,7 +25,6 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 
 	for _, tc := range cases {
 		releases, err := FetchTags(tc.repoUrl, tc.gitHubOAuthToken)
-		fmt.Printf("releases: %v\n", releases)
 		if err != nil {
 			t.Fatalf("error fetching releases: %s", err)
 		}
