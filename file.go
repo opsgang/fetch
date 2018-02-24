@@ -1,17 +1,17 @@
 package main
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"gopkg.in/h2non/filetype.v1"
 	"io"
 	"io/ioutil"
-	"os"
-	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
-	"bytes"
-	"gopkg.in/h2non/filetype.v1"
-	"archive/zip"
-	"archive/tar"
-	"compress/gzip"
 	"strings"
 )
 
@@ -97,7 +97,7 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 			trimmedName := strings.TrimPrefix(f.Name, pathPrefix)
 			// ... but if --source-path is a single file the file name and
 			// path prefix are the same so we want just the base file name.
-			if (f.Name == pathPrefix) {
+			if f.Name == pathPrefix {
 				trimmedName = filepath.Base(f.Name)
 			}
 			// when source-path is a single file, the trimmed name is empty.
@@ -140,11 +140,11 @@ func Unpack(sourceFileName, destDir string) (err error) {
 
 	switch fileExt {
 	case "gz":
-		if err = Gunzip(sourceFileName, destDir) ; err != nil {
+		if err = Gunzip(sourceFileName, destDir); err != nil {
 			return err
 		}
 	case "tar":
-		if err = Untar(sourceFileName, destDir) ; err != nil {
+		if err = Untar(sourceFileName, destDir); err != nil {
 			return err
 		}
 	default:
@@ -195,7 +195,7 @@ func Gunzip(sourceFileName, destDir string) error {
 
 	newSource := strings.TrimSuffix(gunZipped, ".gunzipped")
 	newSource = strings.TrimSuffix(newSource, ".gz")
-	if (strings.HasSuffix(newSource, ".tgz")) {
+	if strings.HasSuffix(newSource, ".tgz") {
 		newSource = strings.Replace(newSource, ".tgz", ".tar", 1)
 	}
 
@@ -204,7 +204,7 @@ func Gunzip(sourceFileName, destDir string) error {
 	}
 
 	// now untar if needed
-	if err = Unpack(newSource, destDir) ; err != nil {
+	if err = Unpack(newSource, destDir); err != nil {
 		return err
 	}
 
@@ -241,12 +241,12 @@ func Untar(sourceFileName, destDir string) error {
 			continue
 		}
 
-		file, err:= os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
 		if err != nil {
 			return err
 		}
 		defer file.Close()
-		_, err =io.Copy(file, tarReader)
+		_, err = io.Copy(file, tarReader)
 		if err != nil {
 			return err
 		}
@@ -287,4 +287,3 @@ func MakeGitHubZipFileRequest(gitHubCommit GitHubCommit, gitHubToken string) (*h
 
 	return request, nil
 }
-

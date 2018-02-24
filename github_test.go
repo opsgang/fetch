@@ -1,10 +1,10 @@
 package main
 
 import (
-	"testing"
+	"io/ioutil"
 	"os"
 	"reflect"
-	"io/ioutil"
+	"testing"
 )
 
 func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
@@ -37,8 +37,8 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 			t.Fatalf("expected non-empty list of releases for repo %s, but no releases were found", tc.repoUrl)
 		}
 
-		if releases[len(releases) - 1] != tc.firstReleaseTag {
-			t.Fatalf("error parsing github releases for repo %s. expected first release = %s, actual = %s", tc.repoUrl, tc.firstReleaseTag, releases[len(releases) - 1])
+		if releases[len(releases)-1] != tc.firstReleaseTag {
+			t.Fatalf("error parsing github releases for repo %s. expected first release = %s, actual = %s", tc.repoUrl, tc.firstReleaseTag, releases[len(releases)-1])
 		}
 
 		if releases[0] != tc.lastReleaseTag {
@@ -121,9 +121,9 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 	}
 
 	expectedFetchTestPublicRelease := GitHubReleaseApiResponse{
-		Id: 8471364,
-		Url: "https://api.github.com/repos/opsgang/fetch/releases/8471364",
-		Name: "static binary for amd64 linux",
+		Id:     8471364,
+		Url:    "https://api.github.com/repos/opsgang/fetch/releases/8471364",
+		Name:   "static binary for amd64 linux",
 		Assets: append([]GitHubReleaseAsset{}, expectedReleaseAsset),
 	}
 

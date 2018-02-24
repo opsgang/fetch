@@ -1,13 +1,13 @@
 package main
 
 import (
-	"net/http"
-	"fmt"
 	"bytes"
 	"encoding/json"
-	"regexp"
-	"os"
+	"fmt"
 	"io"
+	"net/http"
+	"os"
+	"regexp"
 )
 
 type GitHubRepo struct {
@@ -47,10 +47,10 @@ type GitHubTagsCommitApiResponse struct {
 // Modeled directly after the api.github.com response (but only includes the fields we care about). For more info, see:
 // https://developer.github.com/v3/repos/releases/#get-a-release-by-tag-name
 type GitHubReleaseApiResponse struct {
-	Id      int
-	Url     string
-	Name    string
-	Assets  []GitHubReleaseAsset
+	Id     int
+	Url    string
+	Name   string
+	Assets []GitHubReleaseAsset
 }
 
 // The "assets" portion of the GitHubReleaseApiResponse. Modeled directly after the api.github.com response (but only
@@ -110,9 +110,9 @@ func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, *FetchError) 
 	}
 
 	gitHubRepo = GitHubRepo{
-		Url: url,
+		Url:   url,
 		Owner: matches[1],
-		Name: matches[2],
+		Name:  matches[2],
 		Token: token,
 	}
 
@@ -194,7 +194,7 @@ func callGitHubApi(repo GitHubRepo, path string, customHeaders map[string]string
 // Write the body of the given HTTP response to disk at the given path
 func writeResponseToDisk(resp *http.Response, destPath string) *FetchError {
 	out, err := os.Create(destPath)
-	if err != nil  {
+	if err != nil {
 		return wrapError(err)
 	}
 

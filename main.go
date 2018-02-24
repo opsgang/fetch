@@ -1,10 +1,10 @@
 package main
 
 import (
-	"os"
-	"github.com/urfave/cli"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/urfave/cli"
+	"os"
 	"path"
 )
 
@@ -13,14 +13,14 @@ import (
 var VERSION string
 
 type FetchOptions struct {
-	RepoUrl string
-	CommitSha string
-	BranchName string
-	TagConstraint string
-	GithubToken string
-	SourcePaths []string
-	ReleaseAssets []string
-	Unpack bool
+	RepoUrl           string
+	CommitSha         string
+	BranchName        string
+	TagConstraint     string
+	GithubToken       string
+	SourcePaths       []string
+	ReleaseAssets     []string
+	Unpack            bool
 	LocalDownloadPath string
 }
 
@@ -36,59 +36,61 @@ const OPTION_UNPACK = "unpack"
 const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
 
 func main() {
-	app :=		cli.NewApp()
-	app.Name =	"fetch"
-	app.Usage =	"ghfetch makes it easy to download a github repo OR selected subfolders or files OR release attachments.\n"+
-				"\tYou can checkout from a specific git commit, branch, or the tag that satisfies a semantic version constraint!\n"+
-				"\tRelease attachment tarballs or gzips (or gzipped tarballs) can be automatically unpacked in to your local dir!!"
-	app.UsageText = "ghfetch [global options] /my/downloads/dir\n\tSee https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
+	app := cli.NewApp()
+	app.Name = "ghfetch"
+	app.Usage = "download a github repo OR selected subfolders/files OR release attachments.\n" +
+		"\tYou can checkout from a specific git commit, branch, or tag.\n" +
+		"\tSpecify a constraint for tags that are semantic version strings!\n" +
+		"\tChoose to automatically unpack release attachment tars and gzips!!"
+	app.UsageText = "ghfetch [global options] /my/downloads/dir\n" +
+		"\tSee https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
 	app.Version = VERSION
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:	OPTION_REPO,
-			Usage:	"Required. Fully qualified url of the github repo.\n",
+			Name:  OPTION_REPO,
+			Usage: "Required. Fully qualified url of the github repo.\n",
 		},
 		cli.StringFlag{
-			Name:	OPTION_GITHUB_TOKEN,
-			Usage:	"A GitHub Personal Access Token, required to download from a private repo.",
-			EnvVar:	ENV_VAR_GITHUB_TOKEN,
+			Name:   OPTION_GITHUB_TOKEN,
+			Usage:  "A GitHub Personal Access Token, required to download from a private repo.",
+			EnvVar: ENV_VAR_GITHUB_TOKEN,
 		},
 		cli.StringFlag{
-			Name:	OPTION_COMMIT,
-			Usage:	"Git commit SHA1 to download. Overrides --branch and --tag.",
+			Name:  OPTION_COMMIT,
+			Usage: "Git commit SHA1 to download. Overrides --branch and --tag.",
 		},
 		cli.StringFlag{
-			Name:	OPTION_BRANCH,
-			Usage:	"Git branch from which to checkout the latest commit. Overrides --tag.",
+			Name:  OPTION_BRANCH,
+			Usage: "Git branch from which to checkout the latest commit. Overrides --tag.",
 		},
 		cli.StringFlag{
-			Name:	OPTION_TAG,
-			Usage:	"Git tag to download, expressed with Hashicorp's Version Constraint Operators.\n"+
-					"\tIf empty, ghfetch will download the latest tag.\n"+
-					"\tSee https://github.com/opsgang/fetch#version-constraint-operators for examples.",
+			Name: OPTION_TAG,
+			Usage: "Git tag to download, expressed with Hashicorp's Version Constraint Operators.\n" +
+				"\tIf empty, ghfetch will download the latest tag.\n" +
+				"\tSee https://github.com/opsgang/fetch#version-constraint-operators for examples.",
 		},
 		cli.StringSliceFlag{
-			Name:	OPTION_SOURCE_PATH,
-			Usage:	"Subfolder (or file) to get from the repo. Subfolder is not created locally.\n"+
-					"\tIf this or --release-asset aren't specified, all files are downloaded.\n"+
-					"\tSpecify multiple times to download multiple folders or files.\n"+
-					"\te.g. # puts libs/* and build.sh in to /opt/libs"+
-					"\t\t--source-path='/libs/' --source-path='/scripts/build.sh' /opt/libs",
+			Name: OPTION_SOURCE_PATH,
+			Usage: "Subfolder (or file) to get from the repo. Subfolder is not created locally.\n" +
+				"\tIf this or --release-asset aren't specified, all files are downloaded.\n" +
+				"\tSpecify multiple times to download multiple folders or files.\n" +
+				"\te.g. # puts libs/* and build.sh in to /opt/libs\n" +
+				"\t\t--source-path='/libs/' --source-path='/scripts/build.sh' /opt/libs",
 		},
 		cli.StringSliceFlag{
-			Name:	OPTION_RELEASE_ASSET,
-			Usage:	"Name of github release attachment to download. Requires --tag.\n"+
-					"\tSpecify multiple times to grab more than one attachment.\n"+
-					"\te.g. # get foo.tgz and bar.txt from latest 1.x release attachments\n"+
-					"\t\t--tag='~>1.0' --release-asset='foo.tgz' --release-asset='bar.txt'",
+			Name: OPTION_RELEASE_ASSET,
+			Usage: "Name of github release attachment to download. Requires --tag.\n" +
+				"\tSpecify multiple times to grab more than one attachment.\n" +
+				"\te.g. # get foo.tgz and bar.txt from latest 1.x release attachments\n" +
+				"\t\t--tag='~>1.0' --release-asset='foo.tgz' --release-asset='bar.txt'",
 		},
 		cli.BoolFlag{
-			Name:	OPTION_UNPACK,
-			Usage:	"Whether to unpack a compressed release attachment. Requires --release-asset.\n"+
-					"\tOnly unpacks tars, tar-gzip and gzip, otherwise does nothing.\n"+
-					"\te.g. # unpacks latest 1.x tag of foo.tgz in to /var/tmp/foo\n"+
-					"\t\t--tag='~>1.0' --unpack --release-asset='foo.tgz'",
+			Name: OPTION_UNPACK,
+			Usage: "Whether to unpack a compressed release attachment. Requires --release-asset.\n" +
+				"\tOnly unpacks tars, tar-gzip and gzip, otherwise does nothing.\n" +
+				"\te.g. # unpacks latest 1.x tag of foo.tgz in to /var/tmp/foo\n" +
+				"\t\t--tag='~>1.0' --unpack --release-asset='foo.tgz'",
 		},
 	}
 
@@ -99,7 +101,7 @@ func main() {
 }
 
 // We just want to call runFetch(), but app.Action won't permit us to return an error, so call a wrapper function instead.
-func runFetchWrapper (c *cli.Context) {
+func runFetchWrapper(c *cli.Context) {
 	err := runFetch(c)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
@@ -108,7 +110,7 @@ func runFetchWrapper (c *cli.Context) {
 }
 
 // Run the ghfetch program
-func runFetch (c *cli.Context) error {
+func runFetch(c *cli.Context) error {
 	options := parseOptions(c)
 	if err := validateOptions(options); err != nil {
 		return err
@@ -178,14 +180,14 @@ func parseOptions(c *cli.Context) FetchOptions {
 	}
 
 	return FetchOptions{
-		RepoUrl: c.String(OPTION_REPO),
-		CommitSha: c.String(OPTION_COMMIT),
-		BranchName: c.String(OPTION_BRANCH),
-		TagConstraint: c.String(OPTION_TAG),
-		GithubToken: c.String(OPTION_GITHUB_TOKEN),
-		SourcePaths: sourcePaths,
-		ReleaseAssets: c.StringSlice(OPTION_RELEASE_ASSET),
-		Unpack: c.Bool(OPTION_UNPACK),
+		RepoUrl:           c.String(OPTION_REPO),
+		CommitSha:         c.String(OPTION_COMMIT),
+		BranchName:        c.String(OPTION_BRANCH),
+		TagConstraint:     c.String(OPTION_TAG),
+		GithubToken:       c.String(OPTION_GITHUB_TOKEN),
+		SourcePaths:       sourcePaths,
+		ReleaseAssets:     c.StringSlice(OPTION_RELEASE_ASSET),
+		Unpack:            c.Bool(OPTION_UNPACK),
 		LocalDownloadPath: localDownloadPath,
 	}
 }
@@ -217,7 +219,7 @@ func validateOptions(options FetchOptions) error {
 // Download the specified source files from the given repo
 func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHubRepo, latestTag string, branchName string, commitSha string) error {
 	if len(sourcePaths) == 0 {
-		return  nil
+		return nil
 	}
 
 	// We want to respect the GitHubCommit Hierarchy of "CommitSha > GitTag > BranchName"
@@ -225,10 +227,10 @@ func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHu
 	// If the user specified no value for GitTag, our call to getLatestAcceptableTag() above still gave us some value
 	// So we can guarantee (at least logically) that this struct instance is in a valid state right now.
 	gitHubCommit := GitHubCommit{
-		Repo: githubRepo,
-		GitTag: latestTag,
+		Repo:       githubRepo,
+		GitTag:     latestTag,
 		BranchName: branchName,
-		CommitSha: commitSha,
+		CommitSha:  commitSha,
 	}
 
 	// Download that release as a .zip file
@@ -285,7 +287,7 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, destPath string,
 			return err
 		}
 
-		if (unpack) {
+		if unpack {
 			if err := Unpack(assetPath, destPath); err != nil {
 				return err
 			}

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"sort"
-	"strings"
 	"errors"
 	"github.com/hashicorp/go-version"
+	"sort"
+	"strings"
 )
 
 func isTagConstraintSpecificTag(tagConstraint string) (bool, string) {

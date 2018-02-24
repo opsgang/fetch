@@ -1,12 +1,12 @@
 package main
 
 import (
-	"os"
-	"testing"
-	"path/filepath"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
+	"testing"
 )
 
 // Although other tests besides those in this file require this env var, this init() func will cover all tests.
@@ -35,7 +35,7 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 		gitHubCommit := GitHubCommit{
 			Repo: GitHubRepo{
 				Owner: tc.repoOwner,
-				Name: tc.repoName,
+				Name:  tc.repoName,
 			},
 			GitTag: tc.gitTag,
 		}
@@ -69,7 +69,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 		gitHubCommit := GitHubCommit{
 			Repo: GitHubRepo{
 				Owner: tc.repoOwner,
-				Name: tc.repoName,
+				Name:  tc.repoName,
 			},
 			BranchName: tc.branchName,
 		}
@@ -102,7 +102,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 		gitHubCommit := GitHubCommit{
 			Repo: GitHubRepo{
 				Owner: tc.repoOwner,
-				Name: tc.repoName,
+				Name:  tc.repoName,
 			},
 			BranchName: tc.branchName,
 		}
@@ -133,7 +133,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 		gitHubCommit := GitHubCommit{
 			Repo: GitHubRepo{
 				Owner: tc.repoOwner,
-				Name: tc.repoName,
+				Name:  tc.repoName,
 			},
 			CommitSha: tc.commitSha,
 		}
@@ -171,7 +171,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 		gitHubCommit := GitHubCommit{
 			Repo: GitHubRepo{
 				Owner: tc.repoOwner,
-				Name: tc.repoName,
+				Name:  tc.repoName,
 			},
 			CommitSha: tc.commitSha,
 		}
@@ -200,7 +200,7 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 		gitHubCommit := GitHubCommit{
 			Repo: GitHubRepo{
 				Owner: tc.repoOwner,
-				Name: tc.repoName,
+				Name:  tc.repoName,
 			},
 			GitTag: tc.gitTag,
 		}
@@ -224,7 +224,7 @@ func TestExtractFiles(t *testing.T) {
 		{"test-fixtures/fetch-test-public-0.0.1.zip", "/", 1, nil},
 		{"test-fixtures/fetch-test-public-0.0.1.zip", "/README.md", 1, nil}, // single file as --source-path
 		{"test-fixtures/fetch-test-public-0.0.2.zip", "/", 2, nil},
-		{"test-fixtures/fetch-test-public-0.0.3.zip", "/", 4, []string{"/README.md"} },
+		{"test-fixtures/fetch-test-public-0.0.3.zip", "/", 4, []string{"/README.md"}},
 		{"test-fixtures/fetch-test-public-0.0.3.zip", "/folder", 2, nil},
 	}
 
@@ -244,13 +244,13 @@ func TestExtractFiles(t *testing.T) {
 		// Count the number of files in the directory
 		var numFiles int
 		filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-			if ! info.IsDir() {
+			if !info.IsDir() {
 				numFiles++
 			}
 			return nil
 		})
 
-		if (numFiles != tc.expectedNumFiles) {
+		if numFiles != tc.expectedNumFiles {
 			t.Fatalf("While extracting %s, expected to find %d file(s), but found %d. Local path = %s", tc.localFilePath, tc.expectedNumFiles, numFiles, tempDir)
 		}
 
@@ -258,7 +258,7 @@ func TestExtractFiles(t *testing.T) {
 		filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
 			relativeFilename := strings.TrimPrefix(path, tempDir)
 
-			if ! info.IsDir() && stringInSlice(relativeFilename, tc.nonemptyFiles) {
+			if !info.IsDir() && stringInSlice(relativeFilename, tc.nonemptyFiles) {
 				if info.Size() == 0 {
 					t.Fatalf("Expected %s in %s to have non-zero file size, but found file size = %d.\n", relativeFilename, tc.localFilePath, info.Size())
 				}
