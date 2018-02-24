@@ -39,11 +39,11 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "ghfetch"
 	app.Usage = "download a github repo OR selected subfolders/files OR release attachments.\n" +
-		"\tYou can checkout from a specific git commit, branch, or tag.\n" +
-		"\tSpecify a constraint for tags that are semantic version strings!\n" +
-		"\tChoose to automatically unpack release attachment tars and gzips!!"
+		"   You can checkout from a specific git commit, branch, or tag.\n" +
+		"   Specify a constraint for tags that are semantic version strings!\n" +
+		"   Choose to automatically unpack release attachment tars and gzips!!"
 	app.UsageText = "ghfetch [global options] /my/downloads/dir\n" +
-		"\tSee https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
+		"   See https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
 	app.Version = VERSION
 
 	app.Flags = []cli.Flag{
