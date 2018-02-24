@@ -20,7 +20,7 @@ type FetchOptions struct {
 	GithubToken string
 	SourcePaths []string
 	ReleaseAssets []string
-	Decompress bool
+	Unpack bool
 	LocalDownloadPath string
 }
 
@@ -31,50 +31,64 @@ const OPTION_TAG = "tag"
 const OPTION_GITHUB_TOKEN = "github-oauth-token"
 const OPTION_SOURCE_PATH = "source-path"
 const OPTION_RELEASE_ASSET = "release-asset"
-const OPTION_DECOMPRESS = "decompress"
+const OPTION_UNPACK = "unpack"
 
 const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "fetch"
-	app.Usage = "fetch makes it easy to download files, folders, and release assets from a specific git commit, branch, or tag of public and private GitHub repos."
-	app.UsageText = "fetch [global options] <local-download-path>\n   (See https://github.com/gruntwork-io/fetch for examples, argument definitions, and additional docs.)"
+	app :=		cli.NewApp()
+	app.Name =	"fetch"
+	app.Usage =	"ghfetch makes it easy to download a github repo OR selected subfolders or files OR release attachments.\n"+
+				"\tYou can checkout from a specific git commit, branch, or the tag that satisfies a semantic version constraint!\n"+
+				"\tRelease attachment tarballs or gzips (or gzipped tarballs) can be automatically unpacked in to your local dir!!"
+	app.UsageText = "ghfetch [global options] /my/downloads/dir\n\tSee https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
 	app.Version = VERSION
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name: OPTION_REPO,
-			Usage: "Required. Fully qualified URL of the GitHub repo.",
+			Name:	OPTION_REPO,
+			Usage:	"Required. Fully qualified url of the github repo.\n",
 		},
 		cli.StringFlag{
-			Name: OPTION_COMMIT,
-			Usage: "The specific git commit SHA to download. If specified, will override --branch and --tag.",
+			Name:	OPTION_GITHUB_TOKEN,
+			Usage:	"A GitHub Personal Access Token, required to download from a private repo.",
+			EnvVar:	ENV_VAR_GITHUB_TOKEN,
 		},
 		cli.StringFlag{
-			Name: OPTION_BRANCH,
-			Usage: "The git branch from which to download the commit; the latest commit in the branch will be used. If specified, will override --tag.",
+			Name:	OPTION_COMMIT,
+			Usage:	"Git commit SHA1 to download. Overrides --branch and --tag.",
 		},
 		cli.StringFlag{
-			Name: OPTION_TAG,
-			Usage: "The specific git tag to download, expressed with Version Constraint Operators.\n\tIf left blank, fetch will download the latest git tag.\n\tSee https://github.com/gruntwork-io/fetch#version-constraint-operators for examples.",
+			Name:	OPTION_BRANCH,
+			Usage:	"Git branch from which to checkout the latest commit. Overrides --tag.",
 		},
 		cli.StringFlag{
-			Name: OPTION_GITHUB_TOKEN,
-			Usage: "A GitHub Personal Access Token, which is required for downloading from private repos.",
-			EnvVar: ENV_VAR_GITHUB_TOKEN,
+			Name:	OPTION_TAG,
+			Usage:	"Git tag to download, expressed with Hashicorp's Version Constraint Operators.\n"+
+					"\tIf empty, ghfetch will download the latest tag.\n"+
+					"\tSee https://github.com/opsgang/fetch#version-constraint-operators for examples.",
 		},
 		cli.StringSliceFlag{
-			Name: OPTION_SOURCE_PATH,
-			Usage: "The source path to download from the repo. If this or --release-asset aren't specified, all files are downloaded. Can be specified more than once.",
+			Name:	OPTION_SOURCE_PATH,
+			Usage:	"Subfolder (or file) to get from the repo. Subfolder is not created locally.\n"+
+					"\tIf this or --release-asset aren't specified, all files are downloaded.\n"+
+					"\tSpecify multiple times to download multiple folders or files.\n"+
+					"\te.g. # puts libs/* and build.sh in to /opt/libs"+
+					"\t\t--source-path='/libs/' --source-path='/scripts/build.sh' /opt/libs",
 		},
 		cli.StringSliceFlag{
-			Name: OPTION_RELEASE_ASSET,
-			Usage: "The name of a release asset--that is, a binary uploaded to a GitHub Release--to download. Only works with --tag. Can be specified more than once.",
+			Name:	OPTION_RELEASE_ASSET,
+			Usage:	"Name of github release attachment to download. Requires --tag.\n"+
+					"\tSpecify multiple times to grab more than one attachment.\n"+
+					"\te.g. # get foo.tgz and bar.txt from latest 1.x release attachments\n"+
+					"\t\t--tag='~>1.0' --release-asset='foo.tgz' --release-asset='bar.txt'",
 		},
 		cli.BoolFlag{
-			Name: OPTION_DECOMPRESS,
-			Usage: "Whether to unarchive/decompress a release asset. Only works with --release-asset. Only works with .tgz and .tar.gz files.",
+			Name:	OPTION_UNPACK,
+			Usage:	"Whether to unpack a compressed release attachment. Requires --release-asset.\n"+
+					"\tOnly unpacks tars, tar-gzip and gzip, otherwise does nothing.\n"+
+					"\te.g. # unpacks latest 1.x tag of foo.tgz in to /var/tmp/foo\n"+
+					"\t\t--tag='~>1.0' --unpack --release-asset='foo.tgz'",
 		},
 	}
 
@@ -93,7 +107,7 @@ func runFetchWrapper (c *cli.Context) {
 	}
 }
 
-// Run the fetch program
+// Run the ghfetch program
 func runFetch (c *cli.Context) error {
 	options := parseOptions(c)
 	if err := validateOptions(options); err != nil {
@@ -144,7 +158,7 @@ func runFetch (c *cli.Context) error {
 	}
 
 	// Download any requested release assets
-	if err := downloadReleaseAssets(options.ReleaseAssets, options.LocalDownloadPath, repo, desiredTag); err != nil {
+	if err := downloadReleaseAssets(options.ReleaseAssets, options.Unpack, options.LocalDownloadPath, repo, desiredTag); err != nil {
 		return err
 	}
 
@@ -171,7 +185,7 @@ func parseOptions(c *cli.Context) FetchOptions {
 		GithubToken: c.String(OPTION_GITHUB_TOKEN),
 		SourcePaths: sourcePaths,
 		ReleaseAssets: c.StringSlice(OPTION_RELEASE_ASSET),
-		Decompress: c.Bool(OPTION_DECOMPRESS),
+		Unpack: c.Bool(OPTION_UNPACK),
 		LocalDownloadPath: localDownloadPath,
 	}
 }
@@ -182,7 +196,7 @@ func validateOptions(options FetchOptions) error {
 	}
 
 	if options.LocalDownloadPath == "" {
-		return fmt.Errorf("Missing required arguments specifying the local download path. Run \"fetch --help\" for full usage info.")
+		return fmt.Errorf("Missing required arguments specifying the local download dir. Run \"fetch --help\" for full usage info.")
 	}
 
 	if options.TagConstraint == "" && options.CommitSha == "" && options.BranchName == "" {
@@ -193,8 +207,8 @@ func validateOptions(options FetchOptions) error {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_RELEASE_ASSET, OPTION_TAG)
 	}
 
-	if len(options.ReleaseAssets) == 0 && options.Decompress {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_DECOMPRESS, OPTION_RELEASE_ASSET)
+	if len(options.ReleaseAssets) == 0 && options.Unpack {
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_UNPACK, OPTION_RELEASE_ASSET)
 	}
 
 	return nil
@@ -247,7 +261,7 @@ func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHu
 }
 
 // Download the specified binary files that were uploaded as release assets to the specified GitHub release
-func downloadReleaseAssets(releaseAssets []string, destPath string, githubRepo GitHubRepo, latestTag string) error {
+func downloadReleaseAssets(releaseAssets []string, unpack bool, destPath string, githubRepo GitHubRepo, latestTag string) error {
 	if len(releaseAssets) == 0 {
 		return nil
 	}
@@ -257,6 +271,8 @@ func downloadReleaseAssets(releaseAssets []string, destPath string, githubRepo G
 		return err
 	}
 
+	// ... create download dir
+	os.MkdirAll(destPath, 0755)
 	for _, assetName := range releaseAssets {
 		asset := findAssetInRelease(assetName, release)
 		if asset == nil {
@@ -267,6 +283,12 @@ func downloadReleaseAssets(releaseAssets []string, destPath string, githubRepo G
 		fmt.Printf("Downloading release asset %s to %s\n", asset.Name, assetPath)
 		if err := DownloadReleaseAsset(githubRepo, asset.Id, assetPath); err != nil {
 			return err
+		}
+
+		if (unpack) {
+			if err := Unpack(assetPath, destPath); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -299,7 +321,7 @@ func getErrorMessage(errorCode int, errorDetails string) string {
 	case INVALID_TAG_CONSTRAINT_EXPRESSION:
 		return fmt.Sprintf(`
 The --tag value you entered is not a valid constraint expression.
-See https://github.com/gruntwork-io/fetch#version-constraint-operators for examples.
+See https://github.com/opsgang/fetch#version-constraint-operators for examples.
 
 Underlying error message:
 %s

@@ -1,8 +1,13 @@
-hash: 73c7a47e93d490c104b5a0b9f35c784c3ab1f922d722e7e9e037741c6231409b
-updated: 2017-11-13T12:35:03.507097251Z
+hash: 5347ffe712e674b0cb80702d65361343506ed7daad287b7c40bb520dc2237dfe
+updated: 2018-02-22T09:59:21.781350432Z
 imports:
 - name: github.com/hashicorp/go-version
   version: 2e7f5ea8e27bb3fdf9baa0881d16757ac4637332
 - name: github.com/urfave/cli
   version: 44cb242eeb4d76cc813fdc69ba5c4b224677e799
+- name: gopkg.in/h2non/filetype.v1
+  version: cc14fdc9ca0e4c2bafad7458f6ff79fd3947cfbb
+  subpackages:
+  - matchers
+  - types
 testImports: []

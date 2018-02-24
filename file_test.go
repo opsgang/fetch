@@ -222,6 +222,7 @@ func TestExtractFiles(t *testing.T) {
 		nonemptyFiles     []string
 	}{
 		{"test-fixtures/fetch-test-public-0.0.1.zip", "/", 1, nil},
+		{"test-fixtures/fetch-test-public-0.0.1.zip", "/README.md", 1, nil}, // single file as --source-path
 		{"test-fixtures/fetch-test-public-0.0.2.zip", "/", 2, nil},
 		{"test-fixtures/fetch-test-public-0.0.3.zip", "/", 4, []string{"/README.md"} },
 		{"test-fixtures/fetch-test-public-0.0.3.zip", "/folder", 2, nil},

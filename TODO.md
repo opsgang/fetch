@@ -1,10 +1,14 @@
 # TODO
 
-# destination handling
+## destination handling
 
-fubar for multiple assets that include a single file as well.
+FUBAR when a source-path is a single file.
 
-# --decompress
+The destination parameter should **always** be treated as a directory.
+
+This dir should always be created.
+
+## --unpack
 
 Handle untgz based on file extension (.tgz or .tar.gz)
 
@@ -12,7 +16,12 @@ Only for release assets.
 
 Should remove archive after extraction.
 
-# --which-tag
+## --tag-prefix (filter)
+
+Account for only fetching tags that have a prefix with an optional delimiter
+before x.y.z (can be a \., \- or \_)
+
+## --which-tag
 
 FetchTags returns the latest tag or else the one that meets a constraint.
 
@@ -24,8 +33,11 @@ downloaded.
 * Account for when no tag meeting a constraint exists - should fail, not default
   to latest.
 
-# --tag-prefix (filter)
+## rename to ghfetch
 
-Account for only fetching tags that have a prefix with an optional delimiter
-before x.y.z (can be a \., \- or \_)
+_fetch_ is far too overreaching a name - it only works with the github api, much to
+the exasperation of my bitbucket-using-colleagues.
 
+Renaming this to ghfetch is not only clearer, it also frees up the fetch namespace
+for new variants such as bbfetch. At which point maybe my colleagues will speak
+to me again.

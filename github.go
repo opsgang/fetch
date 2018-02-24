@@ -127,7 +127,7 @@ func DownloadReleaseAsset(repo GitHubRepo, assetId int, destPath string) *FetchE
 		return err
 	}
 
-	return writeResonseToDisk(resp, destPath)
+	return writeResponseToDisk(resp, destPath)
 }
 
 // Get information about the GitHub release with the given tag
@@ -192,7 +192,7 @@ func callGitHubApi(repo GitHubRepo, path string, customHeaders map[string]string
 }
 
 // Write the body of the given HTTP response to disk at the given path
-func writeResonseToDisk(resp *http.Response, destPath string) *FetchError {
+func writeResponseToDisk(resp *http.Response, destPath string) *FetchError {
 	out, err := os.Create(destPath)
 	if err != nil  {
 		return wrapError(err)
