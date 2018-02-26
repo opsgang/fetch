@@ -292,6 +292,7 @@ func TestUnpack(t *testing.T) {
 		{"packed.tar.gz", allFiles},
 		{"packed.tar", allFiles},
 		{"file.gz", []string{"file"}},
+		{"dodgygz", []string{"dodgygz"}},
 	}
 
 	os.MkdirAll(tmpDirBase, 0755)
@@ -318,7 +319,7 @@ func TestUnpack(t *testing.T) {
 				relativeFilename := strings.TrimPrefix(path, fmt.Sprintf("%s/", tempDir))
 
 				if !stringInSlice(relativeFilename, tc.expectedFiles) {
-					fmt.Printf("Expected file %s in %s.\n", relativeFilename, tc.expectedFiles)
+					fmt.Printf("Unexpected file %s in pack %s.\n", relativeFilename, tc.sourceFileName)
 				}
 			}
 			return nil
