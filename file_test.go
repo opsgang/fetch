@@ -269,6 +269,136 @@ func TestExtractFiles(t *testing.T) {
 	}
 }
 
+func TestUnpack(t *testing.T) {
+	t.Parallel()
+
+	fixDir := "test-fixtures"
+	tmpDirBase := "/tmp/ghfetch-TestUnpack"
+
+	allFiles := []string{
+		"dirA",
+		"dirA/file",
+		"dirB",
+		"dirB/dirC",
+		"dirB/file.sh",
+		"symlink",
+	}
+
+	cases := []struct {
+		sourceFileName string
+		expectedFiles  []string
+	}{
+		{"packed.tgz", allFiles},
+		{"packed.tar.gz", allFiles},
+		{"packed.tar", allFiles},
+		{"file.gz", []string{"file"}},
+	}
+
+	os.MkdirAll(tmpDirBase, 0755)
+	for _, tc := range cases {
+		tempDir, err := ioutil.TempDir(tmpDirBase, "")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %s", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		sourceFileOriginal := fmt.Sprintf("%s/%s", fixDir, tc.sourceFileName)
+		sourceFile := fmt.Sprintf("%s/%s", tmpDirBase, tc.sourceFileName)
+
+		os.Link(sourceFileOriginal, sourceFile)
+
+		err = Unpack(sourceFile, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to Unpack files: %s", err)
+		}
+
+		// Ensure that files declared to be non-empty are in fact non-empty
+		filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+			if path != tempDir {
+				relativeFilename := strings.TrimPrefix(path, fmt.Sprintf("%s/", tempDir))
+
+				if !stringInSlice(relativeFilename, tc.expectedFiles) {
+					fmt.Printf("Expected file %s in %s.\n", relativeFilename, tc.expectedFiles)
+				}
+			}
+			return nil
+		})
+
+	}
+
+	return
+
+}
+
+// TestUntar - check that untarred contents have expected objects and permissions
+func TestUntar(t *testing.T) {
+	t.Parallel()
+
+	fixDir := "test-fixtures"
+	tmpDirBase := "/tmp/ghfetch-TestUntar"
+
+	type fileInfo struct {
+		isDir     bool
+		isSymLink bool
+		isRegular bool
+		filePerms string
+	}
+
+	dirPerms := "drwxr-xr-x"
+	regPerms := "-rw-r--r--"
+	exePerms := "-rwxr-xr-x"
+	symlinkPerms := "Lrwxrwxrwx"
+	r := make(map[string]fileInfo)
+	r["dirA"] = fileInfo{isDir: true, filePerms: dirPerms}
+	r["dirA/file"] = fileInfo{isRegular: true, filePerms: regPerms}
+	r["dirB"] = fileInfo{isDir: true, filePerms: dirPerms}
+	r["dirB/dirC"] = fileInfo{isDir: true, filePerms: dirPerms}
+	r["dirB/file.sh"] = fileInfo{isRegular: true, filePerms: exePerms}
+	r["symlink"] = fileInfo{isSymLink: true, filePerms: symlinkPerms}
+
+	os.MkdirAll(tmpDirBase, 0755)
+	tempDir, err := ioutil.TempDir(tmpDirBase, "")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %s", err)
+	}
+	defer os.RemoveAll(tempDir)
+	sourceFileName := "packed.tar"
+	sourceFileOriginal := fmt.Sprintf("%s/%s", fixDir, sourceFileName)
+	sourceFile := fmt.Sprintf("%s/%s", tmpDirBase, sourceFileName)
+
+	os.Link(sourceFileOriginal, sourceFile)
+
+	err = Unpack(sourceFile, tempDir)
+	if err != nil {
+		t.Fatalf("Failed to Unpack files: %s", err)
+	}
+
+	// Ensure that files declared to be non-empty are in fact non-empty
+	filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		if path != tempDir {
+			relativePath := strings.TrimPrefix(path, fmt.Sprintf("%s/", tempDir))
+			if i, ok := r[relativePath]; !ok {
+				t.Fatalf("File %s in tar %s not expected in results!", relativePath, sourceFileName)
+			} else {
+				if info.IsDir() && !i.isDir {
+					t.Fatalf("path %s in tar expected to be a dir", relativePath)
+				}
+				if info.Mode().IsRegular() && !i.isRegular {
+					t.Fatalf("path %s in tar expected to be a regular file", relativePath)
+				}
+				if info.Mode()&os.ModeSymlink != 0 && !i.isSymLink {
+					t.Fatalf("path %s in tar expected to be a symlink", relativePath)
+				}
+				if fmt.Sprintf("%s", info.Mode()) != i.filePerms {
+					t.Fatalf("path %s expected perms %s, not %s", relativePath, i.filePerms, info.Mode())
+					fmt.Printf("path: %s, %s\n", relativePath, info.Mode())
+				}
+			}
+		}
+		return nil
+	})
+}
+
 // Return ture if the given slice contains the given string
 func stringInSlice(s string, slice []string) bool {
 	for _, val := range slice {

@@ -16,6 +16,8 @@ Only for release assets.
 
 Should remove archive after extraction.
 
+Should handle symlinks in tars.
+
 ## --tag-prefix (filter)
 
 Account for only fetching tags that have a prefix with an optional delimiter

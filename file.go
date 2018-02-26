@@ -71,7 +71,7 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	}
 	defer r.Close()
 
-	// pathPrefix represents the portion of the local file path we will ignore when copying the file to localPath
+	// pathPrefix will be stripped from source path before copying the file to localPath
 	// E.g. full path = fetch-test-public-0.0.3/folder/file1.txt
 	//      path prefix = fetch-test-public-0.0.3
 	//      file that will eventually get written = <localPath>/folder/file1.txt
@@ -136,7 +136,6 @@ func Unpack(sourceFileName, destDir string) (err error) {
 	if err != nil {
 		return fmt.Errorf("Error detecting filetype of %s: %s", sourceFileName, err)
 	}
-	fmt.Printf("File type of %s: %s\n", sourceFileName, fileExt)
 
 	switch fileExt {
 	case "gz":
@@ -147,8 +146,6 @@ func Unpack(sourceFileName, destDir string) (err error) {
 		if err = Untar(sourceFileName, destDir); err != nil {
 			return err
 		}
-	default:
-		fmt.Printf("Not a gunzip, zip or tar, so won't extract %s further\n", sourceFileName)
 	}
 	return nil
 }
@@ -241,14 +238,24 @@ func Untar(sourceFileName, destDir string) error {
 			continue
 		}
 
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
-		if err != nil {
-			return err
+		if info.Mode()&os.ModeSymlink != 0 {
+			if err := os.Symlink(header.Linkname, path); err != nil {
+				return err
+			} else {
+				continue
+			}
 		}
-		defer file.Close()
-		_, err = io.Copy(file, tarReader)
-		if err != nil {
-			return err
+
+		if info.Mode().IsRegular() {
+			file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = io.Copy(file, tarReader)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if warning := os.Remove(sourceFileName); warning != nil {
