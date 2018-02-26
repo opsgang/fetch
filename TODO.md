@@ -18,6 +18,20 @@ Should remove archive after extraction.
 
 Should handle symlinks in tars.
 
+## --signer-public-key=/path/to/file
+
+See https://gist.github.com/lsowen/d420a64821414cd2adfb for using openpgp
+
+Only if --release-asset specified.
+
+Will not download any {{release-asset}} unless a {{release-asset}}.asc
+or {{release-asset}}.asc.txt is attached to the release as well.
+
+The file and asset are downloaded, then the pgp sig is checked to determine
+whether to delete the downloads or not.
+
+On success the downloaded .asc is deleted.
+
 ## --tag-prefix (filter)
 
 Account for only fetching tags that have a prefix with an optional delimiter
