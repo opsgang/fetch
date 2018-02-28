@@ -35,8 +35,6 @@ const OPTION_RELEASE_ASSET = "release-asset"
 const OPTION_UNPACK = "unpack"
 const OPTION_GPG_PUBLIC_KEY = "gpg-public-key"
 
-const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
-
 func main() {
 	app := cli.NewApp()
 	app.Name = "ghfetch"
@@ -56,7 +54,7 @@ func main() {
 		cli.StringFlag{
 			Name:   OPTION_GITHUB_TOKEN,
 			Usage:  "A GitHub Personal Access Token, required to download from a private repo.",
-			EnvVar: ENV_VAR_GITHUB_TOKEN,
+			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
 		},
 		cli.StringFlag{
 			Name:  OPTION_COMMIT,
@@ -227,8 +225,17 @@ func validateOptions(options FetchOptions) error {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_UNPACK, OPTION_RELEASE_ASSET)
 	}
 
-	if len(options.ReleaseAssets) == 0 && options.GpgPublicKey != "" {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_GPG_PUBLIC_KEY, OPTION_RELEASE_ASSET)
+	if options.GpgPublicKey != "" {
+		if len(options.ReleaseAssets) == 0 {
+			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_GPG_PUBLIC_KEY, OPTION_RELEASE_ASSET)
+		}
+
+		// check file is readable
+		reader, err := os.Open(options.GpgPublicKey)
+		if err != nil {
+			return fmt.Errorf("GPG public key %s is not a readable file.", options.GpgPublicKey)
+		}
+		defer reader.Close()
 	}
 
 	return nil
