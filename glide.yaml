@@ -2,4 +2,5 @@ package: github.com/opsgang/fetch
 import:
 - package: github.com/urfave/cli
 - package: github.com/hashicorp/go-version
+- package: golang.org/x/crypto/openpgp
 - package: gopkg.in/h2non/filetype.v1

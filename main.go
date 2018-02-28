@@ -13,16 +13,23 @@ import (
 var VERSION string
 
 type FetchOptions struct {
-	RepoUrl           string
-	CommitSha         string
-	BranchName        string
-	TagConstraint     string
-	GithubToken       string
-	SourcePaths       []string
-	ReleaseAssets     []string
-	Unpack            bool
-	GpgPublicKey      string
-	LocalDownloadPath string
+	RepoUrl       string
+	CommitSha     string
+	BranchName    string
+	TagConstraint string
+	GithubToken   string
+	SourcePaths   []string
+	ReleaseAssets []string
+	Unpack        bool
+	GpgPublicKey  string
+	DownloadDir   string
+}
+
+type ReleaseAsset struct {
+	Asset     *GitHubReleaseAsset
+	Name      string
+	LocalPath string
+	Tag       string
 }
 
 const OPTION_REPO = "repo"
@@ -166,12 +173,12 @@ func runFetch(c *cli.Context) error {
 	}
 
 	// Download any requested source files
-	if err := downloadSourcePaths(options.SourcePaths, options.LocalDownloadPath, repo, desiredTag, options.BranchName, options.CommitSha); err != nil {
+	if err := downloadSourcePaths(options.SourcePaths, options.DownloadDir, repo, desiredTag, options.BranchName, options.CommitSha); err != nil {
 		return err
 	}
 
 	// Download any requested release assets
-	if err := downloadReleaseAssets(options.ReleaseAssets, options.Unpack, options.GpgPublicKey, options.LocalDownloadPath, repo, desiredTag); err != nil {
+	if err := options.downloadReleaseAssets(repo, desiredTag); err != nil {
 		return err
 	}
 
@@ -183,49 +190,49 @@ func parseOptions(c *cli.Context) FetchOptions {
 	sourcePaths := c.StringSlice(OPTION_SOURCE_PATH)
 
 	return FetchOptions{
-		RepoUrl:           c.String(OPTION_REPO),
-		CommitSha:         c.String(OPTION_COMMIT),
-		BranchName:        c.String(OPTION_BRANCH),
-		TagConstraint:     c.String(OPTION_TAG),
-		GithubToken:       c.String(OPTION_GITHUB_TOKEN),
-		SourcePaths:       sourcePaths,
-		ReleaseAssets:     c.StringSlice(OPTION_RELEASE_ASSET),
-		Unpack:            c.Bool(OPTION_UNPACK),
-		GpgPublicKey:      c.String(OPTION_GPG_PUBLIC_KEY),
-		LocalDownloadPath: localDownloadPath,
+		RepoUrl:       c.String(OPTION_REPO),
+		CommitSha:     c.String(OPTION_COMMIT),
+		BranchName:    c.String(OPTION_BRANCH),
+		TagConstraint: c.String(OPTION_TAG),
+		GithubToken:   c.String(OPTION_GITHUB_TOKEN),
+		SourcePaths:   sourcePaths,
+		ReleaseAssets: c.StringSlice(OPTION_RELEASE_ASSET),
+		Unpack:        c.Bool(OPTION_UNPACK),
+		GpgPublicKey:  c.String(OPTION_GPG_PUBLIC_KEY),
+		DownloadDir:   localDownloadPath,
 	}
 }
 
-func validateOptions(options FetchOptions) error {
-	if options.RepoUrl == "" {
+func validateOptions(o FetchOptions) error {
+	if o.RepoUrl == "" {
 		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", OPTION_REPO)
 	}
 
-	if options.LocalDownloadPath == "" {
+	if o.DownloadDir == "" {
 		return fmt.Errorf("Missing required arguments specifying the local download dir. Run \"fetch --help\" for full usage info.")
 	}
 
-	if options.TagConstraint == "" && options.CommitSha == "" && options.BranchName == "" {
+	if o.TagConstraint == "" && o.CommitSha == "" && o.BranchName == "" {
 		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", OPTION_TAG, OPTION_COMMIT, OPTION_BRANCH)
 	}
 
-	if len(options.ReleaseAssets) > 0 && options.TagConstraint == "" {
+	if len(o.ReleaseAssets) > 0 && o.TagConstraint == "" {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_RELEASE_ASSET, OPTION_TAG)
 	}
 
-	if len(options.ReleaseAssets) == 0 && options.Unpack {
+	if len(o.ReleaseAssets) == 0 && o.Unpack {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_UNPACK, OPTION_RELEASE_ASSET)
 	}
 
-	if options.GpgPublicKey != "" {
-		if len(options.ReleaseAssets) == 0 {
+	if o.GpgPublicKey != "" {
+		if len(o.ReleaseAssets) == 0 {
 			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_GPG_PUBLIC_KEY, OPTION_RELEASE_ASSET)
 		}
 
 		// check file is readable
-		reader, err := os.Open(options.GpgPublicKey)
+		reader, err := os.Open(o.GpgPublicKey)
 		if err != nil {
-			return fmt.Errorf("GPG public key %s is not a readable file.", options.GpgPublicKey)
+			return fmt.Errorf("GPG public key %s is not a readable file.", o.GpgPublicKey)
 		}
 		defer reader.Close()
 	}
@@ -280,32 +287,38 @@ func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHu
 }
 
 // Download the specified binary files that were uploaded as release assets to the specified GitHub release
-func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, destPath string, githubRepo GitHubRepo, latestTag string) error {
-	if len(releaseAssets) == 0 {
+
+func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string) ReleaseAsset {
+	return ReleaseAsset{Asset: asset, Name: name, LocalPath: path, Tag: tag}
+}
+
+func (o *FetchOptions) downloadReleaseAssets(repo GitHubRepo, tag string) error {
+	if len(o.ReleaseAssets) == 0 {
 		return nil
 	}
 
-	release, err := GetGitHubReleaseInfo(githubRepo, latestTag)
+	release, err := GetGitHubReleaseInfo(repo, tag)
 	if err != nil {
 		return err
 	}
 
 	// ... create download dir
-	os.MkdirAll(destPath, 0755)
-	for _, assetName := range releaseAssets {
+	os.MkdirAll(o.DownloadDir, 0755)
+	for _, assetName := range o.ReleaseAssets {
 		asset := findAssetInRelease(assetName, release)
 		if asset == nil {
-			return fmt.Errorf("Could not find asset %s in release %s", assetName, latestTag)
+			return fmt.Errorf("Could not find asset %s in release %s", assetName, tag)
 		}
 
-		assetPath := path.Join(destPath, asset.Name)
+		assetPath := path.Join(o.DownloadDir, asset.Name)
+		a := newAsset(assetName, assetPath, asset, tag)
 		fmt.Printf("Downloading release asset %s to %s\n", asset.Name, assetPath)
-		if err := DownloadReleaseAsset(githubRepo, asset.Id, assetPath); err != nil {
+		if err := DownloadReleaseAsset(repo, asset.Id, assetPath); err != nil {
 			return err
 		}
 
-		if gpgKey != "" {
-			err := doGpgVerification(gpgKey, assetName, assetPath, destPath, release, githubRepo, latestTag)
+		if o.GpgPublicKey != "" {
+			err := a.verifyGpg(o.GpgPublicKey, release, repo)
 			if err != nil {
 				fmt.Printf("Deleting unverified asset %s\n", assetPath)
 				if remErr := os.Remove(assetPath); remErr != nil {
@@ -316,9 +329,8 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, d
 			}
 		}
 
-
-		if unpack {
-			if err := Unpack(assetPath, destPath); err != nil {
+		if o.Unpack {
+			if err := Unpack(assetPath, o.DownloadDir); err != nil {
 				return err
 			}
 		}
@@ -328,26 +340,24 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, d
 	return nil
 }
 
-func doGpgVerification(gpgKey string, assetName string, assetPath string, destPath string, release GitHubReleaseApiResponse, githubRepo GitHubRepo, latestTag string) error {
-	asc := findAscInRelease(assetName, release)
-	ascPath := path.Join(destPath, fmt.Sprintf("%s.asc", assetName))
+func (a *ReleaseAsset) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, githubRepo GitHubRepo) error {
+	asc := findAscInRelease(a.Name, rel)
+	ascPath := fmt.Sprintf("%s.asc", a.LocalPath)
 
 	if asc == nil {
-		msg := "No %s.asc or %s.asc.txt in release %s"
-		return fmt.Errorf(msg, assetName, assetName, latestTag)
+		return fmt.Errorf("No %s.asc or %s.asc.txt in release %s", a.Name, a.Name, a.Tag)
 	}
 	fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
 	if err := DownloadReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
 		return err
 	}
 
-	err := GpgVerify(gpgKey, ascPath, assetPath)
+	err := GpgVerify(gpgKey, ascPath, a.LocalPath)
 	if warning := os.Remove(ascPath); warning != nil {
 		fmt.Printf("Could not remove sig file %s\n", ascPath)
 	}
 
 	return err
-
 }
 
 func findAssetInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
@@ -362,8 +372,8 @@ func findAssetInRelease(assetName string, release GitHubReleaseApiResponse) *Git
 
 func findAscInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
 	for _, asset := range release.Assets {
-		asc := fmt.Sprintf("%s.asc",assetName)
-		ascTxt := fmt.Sprintf("%s.asc.txt",assetName)
+		asc := fmt.Sprintf("%s.asc", assetName)
+		ascTxt := fmt.Sprintf("%s.asc.txt", assetName)
 		if asset.Name == asc || asset.Name == ascTxt {
 			return &asset
 		}
