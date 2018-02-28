@@ -1,10 +1,20 @@
-hash: 5347ffe712e674b0cb80702d65361343506ed7daad287b7c40bb520dc2237dfe
-updated: 2018-02-22T09:59:21.781350432Z
+hash: e5306475e1698d34bae77fcd64060ec05ad12000792695fe95b2589088603d3f
+updated: 2018-02-28T16:54:16.374662647Z
 imports:
 - name: github.com/hashicorp/go-version
-  version: 2e7f5ea8e27bb3fdf9baa0881d16757ac4637332
+  version: 4fe82ae3040f80a03d04d2cccb5606a626b8e1ee
 - name: github.com/urfave/cli
-  version: 44cb242eeb4d76cc813fdc69ba5c4b224677e799
+  version: 8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff
+- name: golang.org/x/crypto
+  version: 91a49db82a88618983a78a06c1cbd4e00ab749ab
+  subpackages:
+  - cast5
+  - openpgp
+  - openpgp/armor
+  - openpgp/elgamal
+  - openpgp/errors
+  - openpgp/packet
+  - openpgp/s2k
 - name: gopkg.in/h2non/filetype.v1
   version: cc14fdc9ca0e4c2bafad7458f6ff79fd3947cfbb
   subpackages:
