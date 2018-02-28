@@ -171,7 +171,7 @@ func runFetch(c *cli.Context) error {
 	}
 
 	// Download any requested release assets
-	if err := downloadReleaseAssets(options.ReleaseAssets, options.Unpack, options.LocalDownloadPath, repo, desiredTag); err != nil {
+	if err := downloadReleaseAssets(options.ReleaseAssets, options.Unpack, options.GpgPublicKey, options.LocalDownloadPath, repo, desiredTag); err != nil {
 		return err
 	}
 
@@ -181,14 +181,6 @@ func runFetch(c *cli.Context) error {
 func parseOptions(c *cli.Context) FetchOptions {
 	localDownloadPath := c.Args().First()
 	sourcePaths := c.StringSlice(OPTION_SOURCE_PATH)
-
-	// Maintain backwards compatibility with older versions of fetch that passed source paths as an optional first
-	// command-line arg
-	if c.NArg() == 2 {
-		fmt.Printf("DEPRECATION WARNING: passing source paths via command-line args is deprecated. Please use the --%s option instead!\n", OPTION_SOURCE_PATH)
-		sourcePaths = []string{c.Args().First()}
-		localDownloadPath = c.Args().Get(1)
-	}
 
 	return FetchOptions{
 		RepoUrl:           c.String(OPTION_REPO),
@@ -288,7 +280,7 @@ func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHu
 }
 
 // Download the specified binary files that were uploaded as release assets to the specified GitHub release
-func downloadReleaseAssets(releaseAssets []string, unpack bool, destPath string, githubRepo GitHubRepo, latestTag string) error {
+func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, destPath string, githubRepo GitHubRepo, latestTag string) error {
 	if len(releaseAssets) == 0 {
 		return nil
 	}
@@ -312,6 +304,35 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, destPath string,
 			return err
 		}
 
+		if gpgKey != "" {
+			asc := findAscInRelease(assetName, release)
+			if asc == nil {
+				msg := "No %s.asc or %s.asc.txt in release %s"
+				return fmt.Errorf(msg, assetName, assetName, latestTag)
+			}
+			ascPath := path.Join(destPath, fmt.Sprintf("%s.asc",asset.Name))
+			fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
+			if err := DownloadReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
+				return err
+			}
+
+			err := GpgVerify(gpgKey, ascPath, assetPath)
+			if warning := os.Remove(ascPath); warning != nil {
+				fmt.Printf("Could not remove sig file %s\n", ascPath)
+			}
+
+			if err != nil {
+				fmt.Printf("Deleting unverified asset %s\n", assetPath)
+				if remErr := os.Remove(assetPath); remErr != nil {
+					return fmt.Errorf("%s\nCould not delete it: %s!", err, remErr)
+				}
+
+				return err
+			}
+
+		}
+
+
 		if unpack {
 			if err := Unpack(assetPath, destPath); err != nil {
 				return err
@@ -326,6 +347,18 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, destPath string,
 func findAssetInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
+			return &asset
+		}
+	}
+
+	return nil
+}
+
+func findAscInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
+	for _, asset := range release.Assets {
+		asc := fmt.Sprintf("%s.asc",assetName)
+		ascTxt := fmt.Sprintf("%s.asc.txt",assetName)
+		if asset.Name == asc || asset.Name == ascTxt {
 			return &asset
 		}
 	}
