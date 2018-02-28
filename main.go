@@ -305,22 +305,7 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, d
 		}
 
 		if gpgKey != "" {
-			asc := findAscInRelease(assetName, release)
-			if asc == nil {
-				msg := "No %s.asc or %s.asc.txt in release %s"
-				return fmt.Errorf(msg, assetName, assetName, latestTag)
-			}
-			ascPath := path.Join(destPath, fmt.Sprintf("%s.asc",asset.Name))
-			fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
-			if err := DownloadReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
-				return err
-			}
-
-			err := GpgVerify(gpgKey, ascPath, assetPath)
-			if warning := os.Remove(ascPath); warning != nil {
-				fmt.Printf("Could not remove sig file %s\n", ascPath)
-			}
-
+			err := doGpgVerification(gpgKey, assetName, assetPath, destPath, release, githubRepo, latestTag)
 			if err != nil {
 				fmt.Printf("Deleting unverified asset %s\n", assetPath)
 				if remErr := os.Remove(assetPath); remErr != nil {
@@ -329,7 +314,6 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, d
 
 				return err
 			}
-
 		}
 
 
@@ -342,6 +326,28 @@ func downloadReleaseAssets(releaseAssets []string, unpack bool, gpgKey string, d
 
 	fmt.Println("Download of release assets complete.")
 	return nil
+}
+
+func doGpgVerification(gpgKey string, assetName string, assetPath string, destPath string, release GitHubReleaseApiResponse, githubRepo GitHubRepo, latestTag string) error {
+	asc := findAscInRelease(assetName, release)
+	ascPath := path.Join(destPath, fmt.Sprintf("%s.asc", assetName))
+
+	if asc == nil {
+		msg := "No %s.asc or %s.asc.txt in release %s"
+		return fmt.Errorf(msg, assetName, assetName, latestTag)
+	}
+	fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
+	if err := DownloadReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
+		return err
+	}
+
+	err := GpgVerify(gpgKey, ascPath, assetPath)
+	if warning := os.Remove(ascPath); warning != nil {
+		fmt.Printf("Could not remove sig file %s\n", ascPath)
+	}
+
+	return err
+
 }
 
 func findAssetInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
