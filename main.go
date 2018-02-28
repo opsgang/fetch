@@ -21,6 +21,7 @@ type FetchOptions struct {
 	SourcePaths       []string
 	ReleaseAssets     []string
 	Unpack            bool
+	GpgPublicKey      string
 	LocalDownloadPath string
 }
 
@@ -32,6 +33,7 @@ const OPTION_GITHUB_TOKEN = "github-oauth-token"
 const OPTION_SOURCE_PATH = "source-path"
 const OPTION_RELEASE_ASSET = "release-asset"
 const OPTION_UNPACK = "unpack"
+const OPTION_GPG_PUBLIC_KEY = "gpg-public-key"
 
 const ENV_VAR_GITHUB_TOKEN = "GITHUB_OAUTH_TOKEN"
 
@@ -92,6 +94,15 @@ func main() {
 				"\te.g. # unpacks latest 1.x tag of foo.tgz in to /var/tmp/foo\n" +
 				"\t\t--tag='~>1.0' --unpack --release-asset='foo.tgz'",
 		},
+		cli.StringFlag{
+			Name: OPTION_GPG_PUBLIC_KEY,
+			Usage: "Path to local armoured GPG public key to verify downloaded release assets.\n" +
+				"\tRequires --release-asset.\n" +
+				"\tIf set, will look for <asset-name>.asc or <asset-name>.asc.txt attached\n" +
+				"\tto the chosen release. That signature and this local key will be used\n" +
+				"\tfor gpg verification.\n" +
+				"\tIf signature file not found, or verification fails, the release-asset is deleted.",
+		},
 	}
 
 	app.Action = runFetchWrapper
@@ -140,6 +151,8 @@ func runFetch(c *cli.Context) error {
 			}
 		}
 		desiredTag = latestTag
+
+		fmt.Printf("Most suitable tag for constraint %s is %s\n", options.TagConstraint, desiredTag)
 	}
 
 	// Prepare the vars we'll need to download
@@ -188,6 +201,7 @@ func parseOptions(c *cli.Context) FetchOptions {
 		SourcePaths:       sourcePaths,
 		ReleaseAssets:     c.StringSlice(OPTION_RELEASE_ASSET),
 		Unpack:            c.Bool(OPTION_UNPACK),
+		GpgPublicKey:      c.String(OPTION_GPG_PUBLIC_KEY),
 		LocalDownloadPath: localDownloadPath,
 	}
 }
@@ -211,6 +225,10 @@ func validateOptions(options FetchOptions) error {
 
 	if len(options.ReleaseAssets) == 0 && options.Unpack {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_UNPACK, OPTION_RELEASE_ASSET)
+	}
+
+	if len(options.ReleaseAssets) == 0 && options.GpgPublicKey != "" {
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_GPG_PUBLIC_KEY, OPTION_RELEASE_ASSET)
 	}
 
 	return nil
