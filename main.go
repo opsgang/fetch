@@ -246,10 +246,11 @@ func (o *FetchOptions) downloadSourcePaths(githubRepo GitHubRepo, latestTag stri
 		return nil
 	}
 
-	// We want to respect the GitHubCommit Hierarchy of "CommitSha > GitTag > BranchName"
-	// Note that CommitSha or BranchName may be blank here if the user did not specify values for these.
-	// If the user specified no value for GitTag, our call to getLatestAcceptableTag() above still gave us some value
-	// So we can guarantee (at least logically) that this struct instance is in a valid state right now.
+	// We respect GitHubCommit Hierarchy: "CommitSha > GitTag > BranchName"
+	// Note that CommitSha and BranchName are empty unless user passed values.
+	// getLatestAcceptableTag() ensures that we have a GitTag value regardless
+	// of whether the user passed one or not.
+	// So if the user specified nothing, we'd download the latest valid tag.
 	gitHubCommit := GitHubCommit{
 		Repo:       githubRepo,
 		GitTag:     latestTag,
@@ -406,8 +407,8 @@ Underlying error message:
 		return fmt.Sprintf(`
 Received an HTTP 401 Response when attempting to query the repo for its tags.
 
-This means that either your GitHub oAuth Token is invalid, or that the token is valid but is being used to request access
-to either a public repo or a private repo to which you don't have access.
+Either your GitHub OAuth Token is invalid, or that you don't have access to
+the repo with that token. Is the repo private?
 
 Underlying error message:
 %s
@@ -416,8 +417,9 @@ Underlying error message:
 		return fmt.Sprintf(`
 Received an HTTP 404 Response when attempting to query the repo for its tags.
 
-This means that either no GitHub repo exists at the URL provided, or that you don't have permission to access it.
-If the URL is correct, you may need to set GITHUB_TOKEN (or GITHUB_OAUTH_TOKEN) in env.
+Either the URL does not exist, or you don't have permission to access it.
+If the repo is private, you will need to set GITHUB_TOKEN (or GITHUB_OAUTH_TOKEN)
+in the env before invoking fetch.
 
 Underlying error message:
 %s
