@@ -11,8 +11,8 @@ import (
 
 // Although other tests besides those in this file require this env var, this init() func will cover all tests.
 func init() {
-	if os.Getenv("GITHUB_OAUTH_TOKEN") == "" {
-		fmt.Println("ERROR: These tests require that env var GITHUB_OAUTH_TOKEN be set to a GitHub Personal Access Token.")
+	if os.Getenv("GITHUB_OAUTH_TOKEN") == "" && os.Getenv("GITHUB_TOKEN") == "" {
+		fmt.Println("ERROR: Before running these tests, set GITHUB_OAUTH_TOKEN or GITHUB_TOKEN.")
 		fmt.Println("See the tests cases to see which GitHub repos the oAuth token needs access to.")
 		os.Exit(1)
 	}

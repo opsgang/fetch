@@ -36,7 +36,7 @@ func GpgVerify(gpgPubKey string, gpgSigPath string, assetPath string) error {
 	}
 
 	for id := range gpg.Identities {
-		fmt.Printf("GPG ID for asset %s: %s", assetPath, id)
+		fmt.Printf("GPG ID for asset %s: %s\n", assetPath, id)
 	}
 	return nil
 }

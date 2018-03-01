@@ -9,3 +9,7 @@ bin/*
 
 # Don't upload dependencies
 vendor
+
+# Ignore temporary test assets
+**/gpg-signing.key
+**/run_in_docker.sh
