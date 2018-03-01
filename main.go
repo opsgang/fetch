@@ -417,7 +417,7 @@ Underlying error message:
 Received an HTTP 404 Response when attempting to query the repo for its tags.
 
 This means that either no GitHub repo exists at the URL provided, or that you don't have permission to access it.
-If the URL is correct, you may need to pass in a --github-oauth-token.
+If the URL is correct, you may need to set GITHUB_TOKEN (or GITHUB_OAUTH_TOKEN) in env.
 
 Underlying error message:
 %s
