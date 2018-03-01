@@ -306,7 +306,9 @@ func TestUnpack(t *testing.T) {
 		sourceFileOriginal := fmt.Sprintf("%s/%s", fixDir, tc.sourceFileName)
 		sourceFile := fmt.Sprintf("%s/%s", tmpDirBase, tc.sourceFileName)
 
-		os.Link(sourceFileOriginal, sourceFile)
+		if err := copyFile(sourceFileOriginal, sourceFile); err != nil {
+			t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
+		}
 
 		err = Unpack(sourceFile, tempDir)
 		if err != nil {
@@ -367,11 +369,13 @@ func TestUntar(t *testing.T) {
 	sourceFileOriginal := fmt.Sprintf("%s/%s", fixDir, sourceFileName)
 	sourceFile := fmt.Sprintf("%s/%s", tmpDirBase, sourceFileName)
 
-	os.Link(sourceFileOriginal, sourceFile)
+	if err := copyFile(sourceFileOriginal, sourceFile); err != nil {
+		t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
+	}
 
-	err = Unpack(sourceFile, tempDir)
+	err = Untar(sourceFile, tempDir)
 	if err != nil {
-		t.Fatalf("Failed to Unpack files: %s", err)
+		t.Fatalf("Failed to Untar files: %s", err)
 	}
 
 	// Ensure that files declared to be non-empty are in fact non-empty
@@ -408,4 +412,15 @@ func stringInSlice(s string, slice []string) bool {
 		}
 	}
 	return false
+}
+
+func copyFile(src string, dst string) error {
+	data, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err = ioutil.WriteFile(dst, data, 0644); err != nil {
+		return err
+	}
+	return nil
 }

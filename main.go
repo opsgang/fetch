@@ -127,13 +127,13 @@ func runFetchWrapper(c *cli.Context) {
 
 // Run the ghfetch program
 func runFetch(c *cli.Context) error {
-	options := parseOptions(c)
-	if err := validateOptions(options); err != nil {
+	o := parseOptions(c)
+	if err := validateOptions(o); err != nil {
 		return err
 	}
 
 	// Get the tags for the given repo
-	tags, err := FetchTags(options.RepoUrl, options.GithubToken)
+	tags, err := FetchTags(o.RepoUrl, o.GithubToken)
 	if err != nil {
 		if err.errorCode == INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED {
 			return errors.New(getErrorMessage(INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED, err.details))
@@ -144,10 +144,10 @@ func runFetch(c *cli.Context) error {
 		}
 	}
 
-	specific, desiredTag := isTagConstraintSpecificTag(options.TagConstraint)
+	specific, desiredTag := isTagConstraintSpecificTag(o.TagConstraint)
 	if !specific {
 		// Find the specific release that matches the latest version constraint
-		latestTag, err := getLatestAcceptableTag(options.TagConstraint, tags)
+		latestTag, err := getLatestAcceptableTag(o.TagConstraint, tags)
 		if err != nil {
 			if err.errorCode == INVALID_TAG_CONSTRAINT_EXPRESSION {
 				return errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
@@ -157,28 +157,28 @@ func runFetch(c *cli.Context) error {
 		}
 		desiredTag = latestTag
 
-		fmt.Printf("Most suitable tag for constraint %s is %s\n", options.TagConstraint, desiredTag)
+		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.TagConstraint, desiredTag)
 	}
 
 	// Prepare the vars we'll need to download
-	repo, err := ParseUrlIntoGitHubRepo(options.RepoUrl, options.GithubToken)
+	repo, err := ParseUrlIntoGitHubRepo(o.RepoUrl, o.GithubToken)
 	if err != nil {
 		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
 
 	// If no release assets and no source paths are specified, then by default, download all the source files from
 	// the repo
-	if len(options.SourcePaths) == 0 && len(options.ReleaseAssets) == 0 {
-		options.SourcePaths = []string{"/"}
+	if len(o.SourcePaths) == 0 && len(o.ReleaseAssets) == 0 {
+		o.SourcePaths = []string{"/"}
 	}
 
 	// Download any requested source files
-	if err := downloadSourcePaths(options.SourcePaths, options.DownloadDir, repo, desiredTag, options.BranchName, options.CommitSha); err != nil {
+	if err := o.downloadSourcePaths(repo, desiredTag); err != nil {
 		return err
 	}
 
 	// Download any requested release assets
-	if err := options.downloadReleaseAssets(repo, desiredTag); err != nil {
+	if err := o.downloadReleaseAssets(repo, desiredTag); err != nil {
 		return err
 	}
 
@@ -241,8 +241,8 @@ func validateOptions(o FetchOptions) error {
 }
 
 // Download the specified source files from the given repo
-func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHubRepo, latestTag string, branchName string, commitSha string) error {
-	if len(sourcePaths) == 0 {
+func (o *FetchOptions) downloadSourcePaths(githubRepo GitHubRepo, latestTag string) error {
+	if len(o.SourcePaths) == 0 {
 		return nil
 	}
 
@@ -253,8 +253,8 @@ func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHu
 	gitHubCommit := GitHubCommit{
 		Repo:       githubRepo,
 		GitTag:     latestTag,
-		BranchName: branchName,
-		CommitSha:  commitSha,
+		BranchName: o.BranchName,
+		CommitSha:  o.CommitSha,
 	}
 
 	// Download that release as a .zip file
@@ -275,9 +275,9 @@ func downloadSourcePaths(sourcePaths []string, destPath string, githubRepo GitHu
 	defer cleanupZipFile(localZipFilePath)
 
 	// Unzip and move the files we need to our destination
-	for _, sourcePath := range sourcePaths {
-		fmt.Printf("Extracting files from <repo>%s to %s ...\n", sourcePath, destPath)
-		if err := extractFiles(localZipFilePath, sourcePath, destPath); err != nil {
+	for _, sourcePath := range o.SourcePaths {
+		fmt.Printf("Extracting files from <repo>%s to %s ...\n", sourcePath, o.DownloadDir)
+		if err := extractFiles(localZipFilePath, sourcePath, o.DownloadDir); err != nil {
 			return fmt.Errorf("Error occurred while extracting files from GitHub zip file: %s", err.Error())
 		}
 	}
