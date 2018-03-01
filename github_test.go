@@ -153,7 +153,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 	}
 }
 
-func TestDownloadReleaseAsset(t *testing.T) {
+func TestFetchReleaseAsset(t *testing.T) {
 	t.Parallel()
 
 	token := os.Getenv("GITHUB_OAUTH_TOKEN")
@@ -178,7 +178,7 @@ func TestDownloadReleaseAsset(t *testing.T) {
 			t.Fatalf("Failed to create temp file due to error: %s", tmpErr.Error())
 		}
 
-		if err := DownloadReleaseAsset(repo, tc.assetId, tmpFile.Name()); err != nil {
+		if err := FetchReleaseAsset(repo, tc.assetId, tmpFile.Name()); err != nil {
 			t.Fatalf("Failed to download asset %d to %s from GitHub URL %s due to error: %s", tc.assetId, tmpFile.Name(), tc.repoUrl, err.Error())
 		}
 

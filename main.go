@@ -314,7 +314,7 @@ func (o *FetchOptions) downloadReleaseAssets(repo GitHubRepo, tag string) error 
 		assetPath := path.Join(o.DownloadDir, asset.Name)
 		a := newAsset(assetName, assetPath, asset, tag)
 		fmt.Printf("Downloading release asset %s to %s\n", asset.Name, assetPath)
-		if err := DownloadReleaseAsset(repo, asset.Id, assetPath); err != nil {
+		if err := FetchReleaseAsset(repo, asset.Id, assetPath); err != nil {
 			return err
 		}
 
@@ -349,7 +349,7 @@ func (a *ReleaseAsset) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, gi
 		return fmt.Errorf("No %s.asc or %s.asc.txt in release %s", a.Name, a.Name, a.Tag)
 	}
 	fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
-	if err := DownloadReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
+	if err := FetchReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
 		return err
 	}
 

@@ -310,18 +310,18 @@ func TestUnpack(t *testing.T) {
 			t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
 		}
 
+		// suppress output from Unpack
 		err = Unpack(sourceFile, tempDir)
 		if err != nil {
 			t.Fatalf("Failed to Unpack files: %s", err)
 		}
-
 		// Ensure that files declared to be non-empty are in fact non-empty
 		filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
 			if path != tempDir {
 				relativeFilename := strings.TrimPrefix(path, fmt.Sprintf("%s/", tempDir))
 
 				if !stringInSlice(relativeFilename, tc.expectedFiles) {
-					fmt.Printf("Unexpected file %s in pack %s.\n", relativeFilename, tc.sourceFileName)
+					t.Fatalf("Unexpected file %s in pack %s.\n", relativeFilename, tc.sourceFileName)
 				}
 			}
 			return nil
@@ -396,7 +396,6 @@ func TestUntar(t *testing.T) {
 				}
 				if fmt.Sprintf("%s", info.Mode()) != i.filePerms {
 					t.Fatalf("path %s expected perms %s, not %s", relativePath, i.filePerms, info.Mode())
-					fmt.Printf("path: %s, %s\n", relativePath, info.Mode())
 				}
 			}
 		}

@@ -120,7 +120,7 @@ func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, *FetchError) 
 }
 
 // Download the release asset with the given id and return its body
-func DownloadReleaseAsset(repo GitHubRepo, assetId int, destPath string) *FetchError {
+func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) *FetchError {
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/assets/%d", assetId))
 	resp, err := callGitHubApi(repo, url, map[string]string{"Accept": "application/octet-stream"})
 	if err != nil {
