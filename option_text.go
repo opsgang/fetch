@@ -39,8 +39,8 @@ Git tag to download, expressed with Hashicorp's version constraint operators.
 	​
 `
 
-const txtFrom_path = `
-Get contents of `+"`/PATH/IN/REPO`"+`. The folder itself is not created locally,
+const txtFromPath = `
+Get contents of ` + "`/PATH/IN/REPO`" + `. The folder itself is not created locally,
 	only its contents. /PATH/IN/REPO can also be the path to a single file.
 	If this or --release-asset aren't specified, all files are downloaded.
 	Specify multiple times to download multiple folders or files.
@@ -50,7 +50,7 @@ Get contents of `+"`/PATH/IN/REPO`"+`. The folder itself is not created locally,
 	​
 `
 
-const txtRelease_asset = `
+const txtReleaseAsset = `
 Name of github release attachment to download. Requires --tag.
 	Specify multiple times to grab more than one attachment.
 	​
@@ -68,7 +68,7 @@ Whether to unpack a compressed release attachment. Requires --release-asset.
 	​
 `
 
-const txtGpg_public_key = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
+const txtGpgPublicKey = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
 	Requires --release-asset.
 	If set, will look for <asset-name>.asc or <asset-name>.asc.txt attached
 	to the chosen release. That signature and /PATH/TO/KEY will be used
@@ -84,4 +84,3 @@ GitHub Personal Access Token, required to download from a private repo.
 	instead of via this commandline option.
 	​
 `
-

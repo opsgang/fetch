@@ -21,7 +21,7 @@ type fetchOpts struct {
 	branch        string
 	tagConstraint string
 	githubToken   string
-	fromPaths      []string
+	fromPaths     []string
 	ReleaseAssets []string
 	Unpack        bool
 	GpgPublicKey  string
@@ -41,10 +41,10 @@ const optCommit = "commit"
 const optBranch = "branch"
 const optTag = "tag"
 const optGithub_token = "oauth-token"
-const optFrom_path = "from-path"
-const optRelease_asset = "release-asset"
+const optFromPath = "from-path"
+const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
-const optGpg_public_key = "gpg-public-key"
+const optGpgPublicKey = "gpg-public-key"
 
 func main() {
 	app := cli.NewApp()
@@ -71,24 +71,24 @@ func main() {
 			Usage: txtBranch,
 		},
 		cli.StringFlag{
-			Name: optTag,
+			Name:  optTag,
 			Usage: txtTag,
 		},
 		cli.StringSliceFlag{
-			Name: optFrom_path,
-			Usage: txtFrom_path,
+			Name:  optFromPath,
+			Usage: txtFromPath,
 		},
 		cli.StringSliceFlag{
-			Name: optRelease_asset,
-			Usage: txtRelease_asset,
+			Name:  optReleaseAsset,
+			Usage: txtReleaseAsset,
 		},
 		cli.BoolFlag{
-			Name: optUnpack,
+			Name:  optUnpack,
 			Usage: txtUnpack,
 		},
 		cli.StringFlag{
-			Name: optGpg_public_key,
-			Usage: txtGpg_public_key,
+			Name:  optGpgPublicKey,
+			Usage: txtGpgPublicKey,
 		},
 		cli.StringFlag{
 			Name:   optGithub_token,
@@ -181,10 +181,10 @@ func parseOptions(c *cli.Context) fetchOpts {
 		branch:        c.String(optBranch),
 		tagConstraint: c.String(optTag),
 		githubToken:   c.String(optGithub_token),
-		fromPaths:     c.StringSlice(optFrom_path),
-		ReleaseAssets: c.StringSlice(optRelease_asset),
+		fromPaths:     c.StringSlice(optFromPath),
+		ReleaseAssets: c.StringSlice(optReleaseAsset),
 		Unpack:        c.Bool(optUnpack),
-		GpgPublicKey:  c.String(optGpg_public_key),
+		GpgPublicKey:  c.String(optGpgPublicKey),
 		DownloadDir:   localDownloadPath,
 	}
 }
@@ -203,16 +203,16 @@ func validateOptions(o fetchOpts) error {
 	}
 
 	if len(o.ReleaseAssets) > 0 && o.tagConstraint == "" {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optRelease_asset, optTag)
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optReleaseAsset, optTag)
 	}
 
 	if len(o.ReleaseAssets) == 0 && o.Unpack {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optRelease_asset)
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optReleaseAsset)
 	}
 
 	if o.GpgPublicKey != "" {
 		if len(o.ReleaseAssets) == 0 {
-			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpg_public_key, optRelease_asset)
+			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpgPublicKey, optReleaseAsset)
 		}
 
 		// check file is readable
@@ -238,10 +238,10 @@ func (o *fetchOpts) downloadFromPaths(githubRepo GitHubRepo, latestTag string) e
 	// of whether the user passed one or not.
 	// So if the user specified nothing, we'd download the latest valid tag.
 	gitHubCommit := GitHubCommit{
-		Repo:       githubRepo,
-		GitTag:     latestTag,
-		branch: o.branch,
-		commitSha:  o.commitSha,
+		Repo:      githubRepo,
+		GitTag:    latestTag,
+		branch:    o.branch,
+		commitSha: o.commitSha,
 	}
 
 	// Download that release as a .zip file

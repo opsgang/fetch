@@ -58,7 +58,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 	cases := []struct {
 		repoOwner   string
 		repoName    string
-		branch  string
+		branch      string
 		githubToken string
 	}{
 		{"opsgang", "fetch", "enable-fetch-to-pull-from-branch", ""},
@@ -92,7 +92,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 	cases := []struct {
 		repoOwner   string
 		repoName    string
-		branch  string
+		branch      string
 		githubToken string
 	}{
 		{"opsgang", "fetch", "branch-that-doesnt-exist", ""},
