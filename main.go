@@ -1,7 +1,5 @@
-/*
-	Package main is the Highlander of namespaces.
-
-	There can be only one.
+/* Package main is the Highlander of namespaces.
+There can be only one.
 */
 package main
 
@@ -45,7 +43,7 @@ const optRepo = "repo"
 const optCommit = "commit"
 const optBranch = "branch"
 const optTag = "tag"
-const optGithub_token = "oauth-token"
+const optGithubToken = "oauth-token"
 const optFromPath = "from-path"
 const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
@@ -96,7 +94,7 @@ func main() {
 			Usage: txtGpgPublicKey,
 		},
 		cli.StringFlag{
-			Name:   optGithub_token,
+			Name:   optGithubToken,
 			Usage:  txtToken,
 			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
 		},
@@ -142,10 +140,13 @@ func runFetch(c *cli.Context) error {
 		latestTag, err := getLatestAcceptableTag(o.tagConstraint, tags)
 		if err != nil {
 			if err.errorCode == INVALID_TAG_CONSTRAINT_EXPRESSION {
-				return errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
+				err = errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
 			} else {
-				return fmt.Errorf("Error occurred while computing latest tag that satisfies version contraint expression: %s", err)
+				errMsg := "Error occurred while computing latest tag " +
+					"that satisfies version contraint expression: %s"
+				err = fmt.Errorf(errMsg, err)
 			}
+			return err
 		}
 		desiredTag = latestTag
 
@@ -158,23 +159,21 @@ func runFetch(c *cli.Context) error {
 		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
 
-	// If no release assets and no source paths are specified, then by default, download all the source files from
-	// the repo
+	// If no release assets or from-paths specified, assume
+	// user wants all files from zipball.
 	if len(o.fromPaths) == 0 && len(o.ReleaseAssets) == 0 {
 		o.fromPaths = []string{"/"}
 	}
 
 	// Download any requested source files
-	if err := o.downloadFromPaths(repo, desiredTag); err != nil {
+	if err := o.downloadFromPaths(repo, desiredTag); err == nil {
 		return err
 	}
 
 	// Download any requested release assets
-	if err := o.downloadReleaseAssets(repo, desiredTag); err != nil {
-		return err
-	}
+	err := o.downloadReleaseAssets(repo, desiredTag)
 
-	return nil
+	return err
 }
 
 func parseOptions(c *cli.Context) fetchOpts {
@@ -185,7 +184,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 		commitSha:     c.String(optCommit),
 		branch:        c.String(optBranch),
 		tagConstraint: c.String(optTag),
-		githubToken:   c.String(optGithub_token),
+		githubToken:   c.String(optGithubToken),
 		fromPaths:     c.StringSlice(optFromPath),
 		ReleaseAssets: c.StringSlice(optReleaseAsset),
 		unpack:        c.Bool(optUnpack),

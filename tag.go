@@ -56,10 +56,11 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, *Fetch
 	if err != nil {
 		// Explicitly check for a malformed tag value so we can return a nice error to the user
 		if strings.Contains(err.Error(), "Malformed constraint") {
-			return latestTag, newError(INVALID_TAG_CONSTRAINT_EXPRESSION, err.Error())
+			err = newError(INVALID_TAG_CONSTRAINT_EXPRESSION, err.Error())
 		} else {
-			return latestTag, wrapError(err)
+			err = wrapError(err)
 		}
+		return latestTag, err
 	}
 
 	latestAcceptableVersion := versions[0]
