@@ -12,6 +12,8 @@ import (
 // http://stackoverflow.com/a/11355611/483528
 var VERSION string
 
+var TIMESTAMP string
+
 type FetchOptions struct {
 	RepoUrl       string
 	CommitSha     string
@@ -44,13 +46,19 @@ const OPTION_GPG_PUBLIC_KEY = "gpg-public-key"
 
 func main() {
 	app := cli.NewApp()
+
 	app.Name = "ghfetch"
+
 	app.Usage = "download a github repo OR selected subfolders/files OR release attachments.\n" +
-		"   You can checkout from a specific git commit, branch, or tag.\n" +
-		"   Specify a constraint for tags that are semantic version strings!\n" +
-		"   Choose to automatically unpack release attachment tars and gzips!!"
+		"   Select a specific git commit, branch, or tag.\n" +
+		"   Specify a semantic version constraint for tags e.g. '>=1.0,<2.0' !\n" +
+		"   Choose to automatically unpack release attachment tars and gzips!!\n" +
+		"   Verify downloaded release attachments against gpg asc signature files!!!\n" +
+		"   " + TIMESTAMP
+
 	app.UsageText = "ghfetch [global options] /my/downloads/dir\n" +
 		"   See https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
+
 	app.Version = VERSION
 
 	app.Flags = []cli.Flag{

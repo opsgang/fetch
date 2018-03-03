@@ -56,7 +56,7 @@ See https://gist.github.com/lsowen/d420a64821414cd2adfb for using openpgp
 
 Only if --release-asset specified.
 
-Will not download any {{release-asset}} unless a {{release-asset}}.asc
+Will not keep any downloaded {{release-asset}} unless a {{release-asset}}.asc
 or {{release-asset}}.asc.txt is attached to the release as well.
 
 The file and asset are downloaded, then the pgp sig is checked and
