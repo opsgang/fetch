@@ -16,12 +16,12 @@ var TIMESTAMP string
 
 // fetchOpts: user defined opts
 type fetchOpts struct {
-	RepoUrl       string
-	CommitSha     string
-	BranchName    string
-	TagConstraint string
-	GithubToken   string
-	SourcePaths   []string
+	repoUrl       string
+	commitSha     string
+	branch        string
+	tagConstraint string
+	githubToken   string
+	fromPaths      []string
 	ReleaseAssets []string
 	Unpack        bool
 	GpgPublicKey  string
@@ -40,8 +40,8 @@ const opt_repo = "repo"
 const opt_commit = "commit"
 const opt_branch = "branch"
 const opt_tag = "tag"
-const opt_github_token = "github-oauth-token"
-const opt_source_path = "source-path"
+const opt_github_token = "oauth-token"
+const opt_from_path = "from-path"
 const opt_release_asset = "release-asset"
 const opt_unpack = "unpack"
 const opt_gpg_public_key = "gpg-public-key"
@@ -51,72 +51,49 @@ func main() {
 
 	app.Name = "ghfetch"
 
-	app.Usage = "download a github repo OR selected subfolders/files OR release attachments.\n" +
-		"   Select a specific git commit, branch, or tag.\n" +
-		"   Specify a semantic version constraint for tags e.g. '>=1.0,<2.0' !\n" +
-		"   Choose to automatically unpack release attachment tars and gzips!!\n" +
-		"   Verify downloaded release attachments against gpg asc signature files!!!\n" +
-		"   " + TIMESTAMP
+	app.Usage = txt_usage + "   " + TIMESTAMP
 
-	app.UsageText = "ghfetch [global options] /my/downloads/dir\n" +
-		"   See https://github.com/opsgang/fetch for examples, argument definitions, and additional docs."
+	app.UsageText = usage_lead
 
 	app.Version = VERSION
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  opt_repo,
-			Usage: "Required. Fully qualified url of the github repo.\n",
-		},
-		cli.StringFlag{
-			Name:   opt_github_token,
-			Usage:  "A GitHub Personal Access Token, required to download from a private repo.",
-			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
+			Usage: txt_repo,
 		},
 		cli.StringFlag{
 			Name:  opt_commit,
-			Usage: "Git commit SHA1 to download. Overrides --branch and --tag.",
+			Usage: txt_commit,
 		},
 		cli.StringFlag{
 			Name:  opt_branch,
-			Usage: "Git branch from which to checkout the latest commit. Overrides --tag.",
+			Usage: txt_branch,
 		},
 		cli.StringFlag{
 			Name: opt_tag,
-			Usage: "Git tag to download, expressed with Hashicorp's Version Constraint Operators.\n" +
-				"\tIf empty, ghfetch will download the latest tag.\n" +
-				"\tSee https://github.com/opsgang/fetch#version-constraint-operators for examples.",
+			Usage: txt_tag,
 		},
 		cli.StringSliceFlag{
-			Name: opt_source_path,
-			Usage: "Subfolder (or file) to get from the repo. Subfolder is not created locally.\n" +
-				"\tIf this or --release-asset aren't specified, all files are downloaded.\n" +
-				"\tSpecify multiple times to download multiple folders or files.\n" +
-				"\te.g. # puts libs/* and build.sh in to /opt/libs\n" +
-				"\t\t--source-path='/libs/' --source-path='/scripts/build.sh' /opt/libs",
+			Name: opt_from_path,
+			Usage: txt_from_path,
 		},
 		cli.StringSliceFlag{
 			Name: opt_release_asset,
-			Usage: "Name of github release attachment to download. Requires --tag.\n" +
-				"\tSpecify multiple times to grab more than one attachment.\n" +
-				"\te.g. # get foo.tgz and bar.txt from latest 1.x release attachments\n" +
-				"\t\t--tag='~>1.0' --release-asset='foo.tgz' --release-asset='bar.txt'",
+			Usage: txt_release_asset,
 		},
 		cli.BoolFlag{
 			Name: opt_unpack,
-			Usage: "Whether to unpack a compressed release attachment. Requires --release-asset.\n" +
-				"\tOnly unpacks tars, tar-gzip and gzip, otherwise does nothing.\n" +
-				"\te.g. # unpacks latest 1.x tag of foo.tgz in to /var/tmp/foo\n" +
-				"\t\t--tag='~>1.0' --unpack --release-asset='foo.tgz'",
+			Usage: txt_unpack,
 		},
 		cli.StringFlag{
 			Name: opt_gpg_public_key,
-			Usage: "Path to local armoured GPG public key to verify downloaded release assets.\n" +
-				"\tRequires --release-asset.\n" +
-				"\tIf set, will look for <asset-name>.asc or <asset-name>.asc.txt attached\n" +
-				"\tto the chosen release. That signature and this local key will be used\n" +
-				"\tfor gpg verification.\n" +
-				"\tIf signature file not found, or verification fails, the release-asset is deleted.",
+			Usage: txt_gpg_public_key,
+		},
+		cli.StringFlag{
+			Name:   opt_github_token,
+			Usage:  txt_token,
+			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
 		},
 	}
 
@@ -143,7 +120,7 @@ func runFetch(c *cli.Context) error {
 	}
 
 	// Get the tags for the given repo
-	tags, err := FetchTags(o.RepoUrl, o.GithubToken)
+	tags, err := FetchTags(o.repoUrl, o.githubToken)
 	if err != nil {
 		if err.errorCode == INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED {
 			return errors.New(getErrorMessage(INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED, err.details))
@@ -154,10 +131,10 @@ func runFetch(c *cli.Context) error {
 		}
 	}
 
-	specific, desiredTag := isTagConstraintSpecificTag(o.TagConstraint)
+	specific, desiredTag := isTagConstraintSpecificTag(o.tagConstraint)
 	if !specific {
 		// Find the specific release that matches the latest version constraint
-		latestTag, err := getLatestAcceptableTag(o.TagConstraint, tags)
+		latestTag, err := getLatestAcceptableTag(o.tagConstraint, tags)
 		if err != nil {
 			if err.errorCode == INVALID_TAG_CONSTRAINT_EXPRESSION {
 				return errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
@@ -167,23 +144,23 @@ func runFetch(c *cli.Context) error {
 		}
 		desiredTag = latestTag
 
-		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.TagConstraint, desiredTag)
+		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.tagConstraint, desiredTag)
 	}
 
 	// Prepare the vars we'll need to download
-	repo, err := ParseUrlIntoGitHubRepo(o.RepoUrl, o.GithubToken)
+	repo, err := ParseUrlIntoGitHubRepo(o.repoUrl, o.githubToken)
 	if err != nil {
 		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
 
 	// If no release assets and no source paths are specified, then by default, download all the source files from
 	// the repo
-	if len(o.SourcePaths) == 0 && len(o.ReleaseAssets) == 0 {
-		o.SourcePaths = []string{"/"}
+	if len(o.fromPaths) == 0 && len(o.ReleaseAssets) == 0 {
+		o.fromPaths = []string{"/"}
 	}
 
 	// Download any requested source files
-	if err := o.downloadSourcePaths(repo, desiredTag); err != nil {
+	if err := o.downloadFromPaths(repo, desiredTag); err != nil {
 		return err
 	}
 
@@ -197,15 +174,14 @@ func runFetch(c *cli.Context) error {
 
 func parseOptions(c *cli.Context) fetchOpts {
 	localDownloadPath := c.Args().First()
-	sourcePaths := c.StringSlice(opt_source_path)
 
 	return fetchOpts{
-		RepoUrl:       c.String(opt_repo),
-		CommitSha:     c.String(opt_commit),
-		BranchName:    c.String(opt_branch),
-		TagConstraint: c.String(opt_tag),
-		GithubToken:   c.String(opt_github_token),
-		SourcePaths:   sourcePaths,
+		repoUrl:       c.String(opt_repo),
+		commitSha:     c.String(opt_commit),
+		branch:        c.String(opt_branch),
+		tagConstraint: c.String(opt_tag),
+		githubToken:   c.String(opt_github_token),
+		fromPaths:     c.StringSlice(opt_from_path),
 		ReleaseAssets: c.StringSlice(opt_release_asset),
 		Unpack:        c.Bool(opt_unpack),
 		GpgPublicKey:  c.String(opt_gpg_public_key),
@@ -214,7 +190,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 }
 
 func validateOptions(o fetchOpts) error {
-	if o.RepoUrl == "" {
+	if o.repoUrl == "" {
 		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", opt_repo)
 	}
 
@@ -222,11 +198,11 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("Missing required arguments specifying the local download dir. Run \"fetch --help\" for full usage info.")
 	}
 
-	if o.TagConstraint == "" && o.CommitSha == "" && o.BranchName == "" {
+	if o.tagConstraint == "" && o.commitSha == "" && o.branch == "" {
 		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", opt_tag, opt_commit, opt_branch)
 	}
 
-	if len(o.ReleaseAssets) > 0 && o.TagConstraint == "" {
+	if len(o.ReleaseAssets) > 0 && o.tagConstraint == "" {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_release_asset, opt_tag)
 	}
 
@@ -251,28 +227,28 @@ func validateOptions(o fetchOpts) error {
 }
 
 // Download the specified source files from the given repo
-func (o *fetchOpts) downloadSourcePaths(githubRepo GitHubRepo, latestTag string) error {
-	if len(o.SourcePaths) == 0 {
+func (o *fetchOpts) downloadFromPaths(githubRepo GitHubRepo, latestTag string) error {
+	if len(o.fromPaths) == 0 {
 		return nil
 	}
 
-	// We respect GitHubCommit Hierarchy: "CommitSha > GitTag > BranchName"
-	// Note that CommitSha and BranchName are empty unless user passed values.
+	// We respect GitHubCommit Hierarchy: "commitSha > GitTag > branch"
+	// Note that commitSha and branch are empty unless user passed values.
 	// getLatestAcceptableTag() ensures that we have a GitTag value regardless
 	// of whether the user passed one or not.
 	// So if the user specified nothing, we'd download the latest valid tag.
 	gitHubCommit := GitHubCommit{
 		Repo:       githubRepo,
 		GitTag:     latestTag,
-		BranchName: o.BranchName,
-		CommitSha:  o.CommitSha,
+		branch: o.branch,
+		commitSha:  o.commitSha,
 	}
 
 	// Download that release as a .zip file
-	if gitHubCommit.CommitSha != "" {
-		fmt.Printf("Downloading git commit \"%s\" of %s ...\n", gitHubCommit.CommitSha, githubRepo.Url)
-	} else if gitHubCommit.BranchName != "" {
-		fmt.Printf("Downloading latest commit from branch \"%s\" of %s ...\n", gitHubCommit.BranchName, githubRepo.Url)
+	if gitHubCommit.commitSha != "" {
+		fmt.Printf("Downloading git commit \"%s\" of %s ...\n", gitHubCommit.commitSha, githubRepo.Url)
+	} else if gitHubCommit.branch != "" {
+		fmt.Printf("Downloading latest commit from branch \"%s\" of %s ...\n", gitHubCommit.branch, githubRepo.Url)
 	} else if gitHubCommit.GitTag != "" {
 		fmt.Printf("Downloading tag \"%s\" of %s ...\n", latestTag, githubRepo.Url)
 	} else {
@@ -286,9 +262,9 @@ func (o *fetchOpts) downloadSourcePaths(githubRepo GitHubRepo, latestTag string)
 	defer cleanupZipFile(localZipFilePath)
 
 	// Unzip and move the files we need to our destination
-	for _, sourcePath := range o.SourcePaths {
-		fmt.Printf("Extracting files from <repo>%s to %s ...\n", sourcePath, o.DownloadDir)
-		if err := extractFiles(localZipFilePath, sourcePath, o.DownloadDir); err != nil {
+	for _, fromPath := range o.fromPaths {
+		fmt.Printf("Extracting files from <repo>%s to %s ...\n", fromPath, o.DownloadDir)
+		if err := extractFiles(localZipFilePath, fromPath, o.DownloadDir); err != nil {
 			return fmt.Errorf("Error occurred while extracting files from GitHub zip file: %s", err.Error())
 		}
 	}

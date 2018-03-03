@@ -265,20 +265,20 @@ func Untar(sourceFileName, destDir string) error {
 }
 
 // Return an HTTP request that will fetch the given GitHub repo's zip file for the given tag, possibly with the gitHubOAuthToken in the header
-// Respects the GitHubCommit hierarchy as defined in the code comments for GitHubCommit (e.g. GitTag > CommitSha)
+// Respects the GitHubCommit hierarchy as defined in the code comments for GitHubCommit (e.g. GitTag > commitSha)
 func MakeGitHubZipFileRequest(gitHubCommit GitHubCommit, gitHubToken string) (*http.Request, error) {
 	var request *http.Request
 
 	// This represents either a commit, branch, or git tag
 	var gitRef string
-	if gitHubCommit.CommitSha != "" {
-		gitRef = gitHubCommit.CommitSha
-	} else if gitHubCommit.BranchName != "" {
-		gitRef = gitHubCommit.BranchName
+	if gitHubCommit.commitSha != "" {
+		gitRef = gitHubCommit.commitSha
+	} else if gitHubCommit.branch != "" {
+		gitRef = gitHubCommit.branch
 	} else if gitHubCommit.GitTag != "" {
 		gitRef = gitHubCommit.GitTag
 	} else {
-		return request, fmt.Errorf("Neither a GitCommitSha nor a GitTag nor a BranchName were specified so impossible to identify a specific commit to download.")
+		return request, fmt.Errorf("Neither a commitSha nor a GitTag nor a branch were specified so impossible to identify a specific commit to download.")
 	}
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/zipball/%s", gitHubCommit.Repo.Owner, gitHubCommit.Repo.Name, gitRef)

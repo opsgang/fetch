@@ -8,7 +8,7 @@ a public or private GitHub repo.
 Download folder `/baz` from tag `0.1.3` of a GitHub repo and save it to `/tmp/baz`:
 
 ```
-fetch --repo="https://github.com/foo/bar" --tag="0.1.3" --source-path="/baz" /tmp/baz
+fetch --repo="https://github.com/foo/bar" --tag="0.1.3" --from-path="/baz" /tmp/baz
 ```
 
 Download the release asset `foo.exe` from release `0.1.5` and save it to `/tmp`:
@@ -60,8 +60,8 @@ The supported options are:
 - `--branch` (**Optional**): The git branch from which to download; the latest commit in the branch will be used. If
   specified, will override `--tag`.
 - `--commit` (**Optional**): The SHA of a git commit to download. If specified, will override `--branch` and `--tag`.
-- `--source-path` (**Optional**): The source path to download from the repo (e.g. `--source-path=/folder` will download
-  the `/folder` path and all files below it). By default, all files are downloaded from the repo unless `--source-path`
+- `--from-path` (**Optional**): The source path to download from the repo (e.g. `--from-path=/folder` will download
+  the `/folder` path and all files below it). By default, all files are downloaded from the repo unless `--from-path`
   or `--release-asset` is specified. This option can be specified more than once.
 - `--release-asset` (**Optional**): The name of a release asset--that is, a binary uploaded to a [GitHub
   Release](https://help.github.com/articles/creating-releases/)--to download. This option can be specified more than
@@ -103,7 +103,7 @@ Specifically, this includes:
 Download `/modules/foo/bar.sh` from a GitHub release where the tag is the latest version of `0.1.x` but at least `0.1.5`, and save it to `/tmp/bar`:
 
 ```
-fetch --repo="https://github.com/foo/bar" --tag="~>0.1.5" --source-path="/modules/foo/bar.sh" /tmp/bar
+fetch --repo="https://github.com/foo/bar" --tag="~>0.1.5" --from-path="/modules/foo/bar.sh" /tmp/bar
 ```
 
 #### Usage Example 2
@@ -111,7 +111,7 @@ fetch --repo="https://github.com/foo/bar" --tag="~>0.1.5" --source-path="/module
 Download all files in `/modules/foo` from a GitHub release where the tag is exactly `0.1.5`, and save them to `/tmp`:
 
 ```
-fetch --repo="https://github.com/foo/bar" --tag="0.1.5" --source-path="/modules/foo" /tmp
+fetch --repo="https://github.com/foo/bar" --tag="0.1.5" --from-path="/modules/foo" /tmp
 ```
 
 #### Usage Example 3
@@ -119,7 +119,7 @@ fetch --repo="https://github.com/foo/bar" --tag="0.1.5" --source-path="/modules/
 Download all files from a private GitHub repo using the GitHUb oAuth Token `123`. Get the release whose tag is exactly `0.1.5`, and save the files to `/tmp`:
 
 ```
-GITHUB_OAUTH_TOKEN=123
+GITHUB_TOKEN=123 # can also use GITHUB_OAUTH_TOKEN instead
 
 fetch --repo="https://github.com/foo/bar" --tag="0.1.5" /tmp
 ```

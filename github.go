@@ -19,15 +19,15 @@ type GitHubRepo struct {
 
 // Represents a specific git commit.
 // Note that code using GitHub Commit should respect the following hierarchy:
-// - CommitSha > BranchName > GitTag
-// - Example: GitTag and BranchName are both specified; use the GitTag
-// - Example: GitTag and CommitSha are both specified; use the CommitSha
-// - Example: BranchName alone is specified; use BranchName
+// - commitSha > branch > GitTag
+// - Example: GitTag and branch are both specified; use the GitTag
+// - Example: GitTag and commitSha are both specified; use the commitSha
+// - Example: branch alone is specified; use branch
 type GitHubCommit struct {
 	Repo       GitHubRepo // The GitHub repo where this release lives
 	GitTag     string     // The specific git tag for this release
-	BranchName string     // If specified, indicates that this commit should be the latest commit on the given branch
-	CommitSha  string     // If specified, indicates that this commit should be exactly this Git Commit SHA.
+	branch string     // If specified, indicates that this commit should be the latest commit on the given branch
+	commitSha  string     // If specified, indicates that this commit should be exactly this Git Commit SHA.
 }
 
 // Modeled directly after the api.github.com response

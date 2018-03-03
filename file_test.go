@@ -58,7 +58,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 	cases := []struct {
 		repoOwner   string
 		repoName    string
-		branchName  string
+		branch  string
 		githubToken string
 	}{
 		{"opsgang", "fetch", "enable-fetch-to-pull-from-branch", ""},
@@ -71,7 +71,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
-			BranchName: tc.branchName,
+			branch: tc.branch,
 		}
 
 		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
@@ -92,7 +92,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 	cases := []struct {
 		repoOwner   string
 		repoName    string
-		branchName  string
+		branch  string
 		githubToken string
 	}{
 		{"opsgang", "fetch", "branch-that-doesnt-exist", ""},
@@ -104,13 +104,13 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
-			BranchName: tc.branchName,
+			branch: tc.branch,
 		}
 
 		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
-			t.Fatalf("Expected that attempt to download repo %s/%s for branch \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.branchName)
+			t.Fatalf("Expected that attempt to download repo %s/%s for branch \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.branch)
 		}
 	}
 }
@@ -135,7 +135,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
-			CommitSha: tc.commitSha,
+			commitSha: tc.commitSha,
 		}
 
 		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
@@ -173,7 +173,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
-			CommitSha: tc.commitSha,
+			commitSha: tc.commitSha,
 		}
 
 		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
