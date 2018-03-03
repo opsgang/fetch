@@ -8,13 +8,14 @@ import (
 	"path"
 )
 
-// This variable is set at build time using -ldflags parameters. For more info, see:
-// http://stackoverflow.com/a/11355611/483528
+// VERSION: set at build time with -ldflags
 var VERSION string
 
+// TIMESTAMP: set at build time with -ldflags
 var TIMESTAMP string
 
-type FetchOptions struct {
+// fetchOpts: user defined opts
+type fetchOpts struct {
 	RepoUrl       string
 	CommitSha     string
 	BranchName    string
@@ -27,22 +28,23 @@ type FetchOptions struct {
 	DownloadDir   string
 }
 
-type ReleaseAsset struct {
+// releaseDl: data to complete download of a release asset
+type releaseDl struct {
 	Asset     *GitHubReleaseAsset
 	Name      string
 	LocalPath string
 	Tag       string
 }
 
-const OPTION_REPO = "repo"
-const OPTION_COMMIT = "commit"
-const OPTION_BRANCH = "branch"
-const OPTION_TAG = "tag"
-const OPTION_GITHUB_TOKEN = "github-oauth-token"
-const OPTION_SOURCE_PATH = "source-path"
-const OPTION_RELEASE_ASSET = "release-asset"
-const OPTION_UNPACK = "unpack"
-const OPTION_GPG_PUBLIC_KEY = "gpg-public-key"
+const opt_repo = "repo"
+const opt_commit = "commit"
+const opt_branch = "branch"
+const opt_tag = "tag"
+const opt_github_token = "github-oauth-token"
+const opt_source_path = "source-path"
+const opt_release_asset = "release-asset"
+const opt_unpack = "unpack"
+const opt_gpg_public_key = "gpg-public-key"
 
 func main() {
 	app := cli.NewApp()
@@ -63,30 +65,30 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  OPTION_REPO,
+			Name:  opt_repo,
 			Usage: "Required. Fully qualified url of the github repo.\n",
 		},
 		cli.StringFlag{
-			Name:   OPTION_GITHUB_TOKEN,
+			Name:   opt_github_token,
 			Usage:  "A GitHub Personal Access Token, required to download from a private repo.",
 			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
 		},
 		cli.StringFlag{
-			Name:  OPTION_COMMIT,
+			Name:  opt_commit,
 			Usage: "Git commit SHA1 to download. Overrides --branch and --tag.",
 		},
 		cli.StringFlag{
-			Name:  OPTION_BRANCH,
+			Name:  opt_branch,
 			Usage: "Git branch from which to checkout the latest commit. Overrides --tag.",
 		},
 		cli.StringFlag{
-			Name: OPTION_TAG,
+			Name: opt_tag,
 			Usage: "Git tag to download, expressed with Hashicorp's Version Constraint Operators.\n" +
 				"\tIf empty, ghfetch will download the latest tag.\n" +
 				"\tSee https://github.com/opsgang/fetch#version-constraint-operators for examples.",
 		},
 		cli.StringSliceFlag{
-			Name: OPTION_SOURCE_PATH,
+			Name: opt_source_path,
 			Usage: "Subfolder (or file) to get from the repo. Subfolder is not created locally.\n" +
 				"\tIf this or --release-asset aren't specified, all files are downloaded.\n" +
 				"\tSpecify multiple times to download multiple folders or files.\n" +
@@ -94,21 +96,21 @@ func main() {
 				"\t\t--source-path='/libs/' --source-path='/scripts/build.sh' /opt/libs",
 		},
 		cli.StringSliceFlag{
-			Name: OPTION_RELEASE_ASSET,
+			Name: opt_release_asset,
 			Usage: "Name of github release attachment to download. Requires --tag.\n" +
 				"\tSpecify multiple times to grab more than one attachment.\n" +
 				"\te.g. # get foo.tgz and bar.txt from latest 1.x release attachments\n" +
 				"\t\t--tag='~>1.0' --release-asset='foo.tgz' --release-asset='bar.txt'",
 		},
 		cli.BoolFlag{
-			Name: OPTION_UNPACK,
+			Name: opt_unpack,
 			Usage: "Whether to unpack a compressed release attachment. Requires --release-asset.\n" +
 				"\tOnly unpacks tars, tar-gzip and gzip, otherwise does nothing.\n" +
 				"\te.g. # unpacks latest 1.x tag of foo.tgz in to /var/tmp/foo\n" +
 				"\t\t--tag='~>1.0' --unpack --release-asset='foo.tgz'",
 		},
 		cli.StringFlag{
-			Name: OPTION_GPG_PUBLIC_KEY,
+			Name: opt_gpg_public_key,
 			Usage: "Path to local armoured GPG public key to verify downloaded release assets.\n" +
 				"\tRequires --release-asset.\n" +
 				"\tIf set, will look for <asset-name>.asc or <asset-name>.asc.txt attached\n" +
@@ -193,27 +195,27 @@ func runFetch(c *cli.Context) error {
 	return nil
 }
 
-func parseOptions(c *cli.Context) FetchOptions {
+func parseOptions(c *cli.Context) fetchOpts {
 	localDownloadPath := c.Args().First()
-	sourcePaths := c.StringSlice(OPTION_SOURCE_PATH)
+	sourcePaths := c.StringSlice(opt_source_path)
 
-	return FetchOptions{
-		RepoUrl:       c.String(OPTION_REPO),
-		CommitSha:     c.String(OPTION_COMMIT),
-		BranchName:    c.String(OPTION_BRANCH),
-		TagConstraint: c.String(OPTION_TAG),
-		GithubToken:   c.String(OPTION_GITHUB_TOKEN),
+	return fetchOpts{
+		RepoUrl:       c.String(opt_repo),
+		CommitSha:     c.String(opt_commit),
+		BranchName:    c.String(opt_branch),
+		TagConstraint: c.String(opt_tag),
+		GithubToken:   c.String(opt_github_token),
 		SourcePaths:   sourcePaths,
-		ReleaseAssets: c.StringSlice(OPTION_RELEASE_ASSET),
-		Unpack:        c.Bool(OPTION_UNPACK),
-		GpgPublicKey:  c.String(OPTION_GPG_PUBLIC_KEY),
+		ReleaseAssets: c.StringSlice(opt_release_asset),
+		Unpack:        c.Bool(opt_unpack),
+		GpgPublicKey:  c.String(opt_gpg_public_key),
 		DownloadDir:   localDownloadPath,
 	}
 }
 
-func validateOptions(o FetchOptions) error {
+func validateOptions(o fetchOpts) error {
 	if o.RepoUrl == "" {
-		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", OPTION_REPO)
+		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", opt_repo)
 	}
 
 	if o.DownloadDir == "" {
@@ -221,20 +223,20 @@ func validateOptions(o FetchOptions) error {
 	}
 
 	if o.TagConstraint == "" && o.CommitSha == "" && o.BranchName == "" {
-		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", OPTION_TAG, OPTION_COMMIT, OPTION_BRANCH)
+		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", opt_tag, opt_commit, opt_branch)
 	}
 
 	if len(o.ReleaseAssets) > 0 && o.TagConstraint == "" {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_RELEASE_ASSET, OPTION_TAG)
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_release_asset, opt_tag)
 	}
 
 	if len(o.ReleaseAssets) == 0 && o.Unpack {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_UNPACK, OPTION_RELEASE_ASSET)
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_unpack, opt_release_asset)
 	}
 
 	if o.GpgPublicKey != "" {
 		if len(o.ReleaseAssets) == 0 {
-			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", OPTION_GPG_PUBLIC_KEY, OPTION_RELEASE_ASSET)
+			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_gpg_public_key, opt_release_asset)
 		}
 
 		// check file is readable
@@ -249,7 +251,7 @@ func validateOptions(o FetchOptions) error {
 }
 
 // Download the specified source files from the given repo
-func (o *FetchOptions) downloadSourcePaths(githubRepo GitHubRepo, latestTag string) error {
+func (o *fetchOpts) downloadSourcePaths(githubRepo GitHubRepo, latestTag string) error {
 	if len(o.SourcePaths) == 0 {
 		return nil
 	}
@@ -297,11 +299,11 @@ func (o *FetchOptions) downloadSourcePaths(githubRepo GitHubRepo, latestTag stri
 
 // Download the specified binary files that were uploaded as release assets to the specified GitHub release
 
-func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string) ReleaseAsset {
-	return ReleaseAsset{Asset: asset, Name: name, LocalPath: path, Tag: tag}
+func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string) releaseDl {
+	return releaseDl{Asset: asset, Name: name, LocalPath: path, Tag: tag}
 }
 
-func (o *FetchOptions) downloadReleaseAssets(repo GitHubRepo, tag string) error {
+func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
 	if len(o.ReleaseAssets) == 0 {
 		return nil
 	}
@@ -349,7 +351,7 @@ func (o *FetchOptions) downloadReleaseAssets(repo GitHubRepo, tag string) error 
 	return nil
 }
 
-func (a *ReleaseAsset) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, githubRepo GitHubRepo) error {
+func (a *releaseDl) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, githubRepo GitHubRepo) error {
 	asc := findAscInRelease(a.Name, rel)
 	ascPath := fmt.Sprintf("%s.asc", a.LocalPath)
 
