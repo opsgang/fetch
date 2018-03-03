@@ -36,63 +36,63 @@ type releaseDl struct {
 	Tag       string
 }
 
-const opt_repo = "repo"
-const opt_commit = "commit"
-const opt_branch = "branch"
-const opt_tag = "tag"
-const opt_github_token = "oauth-token"
-const opt_from_path = "from-path"
-const opt_release_asset = "release-asset"
-const opt_unpack = "unpack"
-const opt_gpg_public_key = "gpg-public-key"
+const optRepo = "repo"
+const optCommit = "commit"
+const optBranch = "branch"
+const optTag = "tag"
+const optGithub_token = "oauth-token"
+const optFrom_path = "from-path"
+const optRelease_asset = "release-asset"
+const optUnpack = "unpack"
+const optGpg_public_key = "gpg-public-key"
 
 func main() {
 	app := cli.NewApp()
 
 	app.Name = "ghfetch"
 
-	app.Usage = txt_usage + "   " + TIMESTAMP
+	app.Usage = txtUsage + "   " + TIMESTAMP
 
-	app.UsageText = usage_lead
+	app.UsageText = usageLead
 
 	app.Version = VERSION
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  opt_repo,
-			Usage: txt_repo,
+			Name:  optRepo,
+			Usage: txtRepo,
 		},
 		cli.StringFlag{
-			Name:  opt_commit,
-			Usage: txt_commit,
+			Name:  optCommit,
+			Usage: txtCommit,
 		},
 		cli.StringFlag{
-			Name:  opt_branch,
-			Usage: txt_branch,
+			Name:  optBranch,
+			Usage: txtBranch,
 		},
 		cli.StringFlag{
-			Name: opt_tag,
-			Usage: txt_tag,
+			Name: optTag,
+			Usage: txtTag,
 		},
 		cli.StringSliceFlag{
-			Name: opt_from_path,
-			Usage: txt_from_path,
+			Name: optFrom_path,
+			Usage: txtFrom_path,
 		},
 		cli.StringSliceFlag{
-			Name: opt_release_asset,
-			Usage: txt_release_asset,
+			Name: optRelease_asset,
+			Usage: txtRelease_asset,
 		},
 		cli.BoolFlag{
-			Name: opt_unpack,
-			Usage: txt_unpack,
+			Name: optUnpack,
+			Usage: txtUnpack,
 		},
 		cli.StringFlag{
-			Name: opt_gpg_public_key,
-			Usage: txt_gpg_public_key,
+			Name: optGpg_public_key,
+			Usage: txtGpg_public_key,
 		},
 		cli.StringFlag{
-			Name:   opt_github_token,
-			Usage:  txt_token,
+			Name:   optGithub_token,
+			Usage:  txtToken,
 			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
 		},
 	}
@@ -176,22 +176,22 @@ func parseOptions(c *cli.Context) fetchOpts {
 	localDownloadPath := c.Args().First()
 
 	return fetchOpts{
-		repoUrl:       c.String(opt_repo),
-		commitSha:     c.String(opt_commit),
-		branch:        c.String(opt_branch),
-		tagConstraint: c.String(opt_tag),
-		githubToken:   c.String(opt_github_token),
-		fromPaths:     c.StringSlice(opt_from_path),
-		ReleaseAssets: c.StringSlice(opt_release_asset),
-		Unpack:        c.Bool(opt_unpack),
-		GpgPublicKey:  c.String(opt_gpg_public_key),
+		repoUrl:       c.String(optRepo),
+		commitSha:     c.String(optCommit),
+		branch:        c.String(optBranch),
+		tagConstraint: c.String(optTag),
+		githubToken:   c.String(optGithub_token),
+		fromPaths:     c.StringSlice(optFrom_path),
+		ReleaseAssets: c.StringSlice(optRelease_asset),
+		Unpack:        c.Bool(optUnpack),
+		GpgPublicKey:  c.String(optGpg_public_key),
 		DownloadDir:   localDownloadPath,
 	}
 }
 
 func validateOptions(o fetchOpts) error {
 	if o.repoUrl == "" {
-		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", opt_repo)
+		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", optRepo)
 	}
 
 	if o.DownloadDir == "" {
@@ -199,20 +199,20 @@ func validateOptions(o fetchOpts) error {
 	}
 
 	if o.tagConstraint == "" && o.commitSha == "" && o.branch == "" {
-		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", opt_tag, opt_commit, opt_branch)
+		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", optTag, optCommit, optBranch)
 	}
 
 	if len(o.ReleaseAssets) > 0 && o.tagConstraint == "" {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_release_asset, opt_tag)
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optRelease_asset, optTag)
 	}
 
 	if len(o.ReleaseAssets) == 0 && o.Unpack {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_unpack, opt_release_asset)
+		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optRelease_asset)
 	}
 
 	if o.GpgPublicKey != "" {
 		if len(o.ReleaseAssets) == 0 {
-			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", opt_gpg_public_key, opt_release_asset)
+			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpg_public_key, optRelease_asset)
 		}
 
 		// check file is readable
