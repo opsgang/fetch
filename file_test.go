@@ -40,7 +40,7 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 			GitTag: tc.gitTag,
 		}
 
-		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
+		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -74,7 +74,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 			branch: tc.branch,
 		}
 
-		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
+		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -107,7 +107,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 			branch: tc.branch,
 		}
 
-		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
+		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
 			t.Fatalf("Expected that attempt to download repo %s/%s for branch \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.branch)
@@ -138,7 +138,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 			commitSha: tc.commitSha,
 		}
 
-		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
+		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -176,7 +176,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 			commitSha: tc.commitSha,
 		}
 
-		zipFilePath, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
+		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
 			t.Fatalf("Expected that attempt to download repo %s/%s at commmit sha \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.commitSha)
@@ -205,7 +205,7 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 			GitTag: tc.gitTag,
 		}
 
-		_, err := downloadGithubZipFile(gitHubCommit, tc.githubToken)
+		_, err := getSrcZip(gitHubCommit, tc.githubToken)
 		if err == nil && err.errorCode != 500 {
 			t.Fatalf("Expected error for bad repo values: %s/%s:%s", tc.repoOwner, tc.repoName, tc.gitTag)
 		}
@@ -310,10 +310,9 @@ func TestUnpack(t *testing.T) {
 			t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
 		}
 
-		// suppress output from Unpack
-		err = Unpack(sourceFile, tempDir)
+		err = unpack(sourceFile, tempDir)
 		if err != nil {
-			t.Fatalf("Failed to Unpack files: %s", err)
+			t.Fatalf("Failed to unpack files: %s", err)
 		}
 		// Ensure that files declared to be non-empty are in fact non-empty
 		filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
@@ -373,9 +372,9 @@ func TestUntar(t *testing.T) {
 		t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
 	}
 
-	err = Untar(sourceFile, tempDir)
+	err = untar(sourceFile, tempDir)
 	if err != nil {
-		t.Fatalf("Failed to Untar files: %s", err)
+		t.Fatalf("Failed to untar files: %s", err)
 	}
 
 	// Ensure that files declared to be non-empty are in fact non-empty

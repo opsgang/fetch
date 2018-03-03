@@ -18,7 +18,7 @@ import (
 // Download the zip file at the given URL to a temporary local directory.
 // Returns the absolute path to the downloaded zip file.
 // IMPORTANT: You must call "defer os.RemoveAll(dir)" in the calling function when done with the downloaded zip file!
-func downloadGithubZipFile(gitHubCommit GitHubCommit, gitHubToken string) (string, *FetchError) {
+func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, *FetchError) {
 
 	var zipFilePath string
 
@@ -32,7 +32,7 @@ func downloadGithubZipFile(gitHubCommit GitHubCommit, gitHubToken string) (strin
 
 	// Download the zip file, possibly using the GitHub oAuth Token
 	httpClient := &http.Client{}
-	req, err := MakeGitHubZipFileRequest(gitHubCommit, gitHubToken)
+	req, err := gitHubZipRequest(gitHubCommit, gitHubToken)
 	if err != nil {
 		return zipFilePath, wrapError(err)
 	}
@@ -42,10 +42,21 @@ func downloadGithubZipFile(gitHubCommit GitHubCommit, gitHubToken string) (strin
 		return zipFilePath, wrapError(err)
 	}
 	if resp.StatusCode != 200 {
-		return zipFilePath, newError(FAILED_TO_DOWNLOAD_FILE, fmt.Sprintf("Failed to download file at the url %s. Received HTTP Response %d.", req.URL.String(), resp.StatusCode))
+		errMsg := "Failed to download file at the url %s. Received HTTP Response %d."
+		return zipFilePath, newError(
+			FAILED_TO_DOWNLOAD_FILE,
+			fmt.Sprintf(errMsg, req.URL.String(), resp.StatusCode),
+		)
 	}
 	if resp.Header.Get("Content-Type") != "application/zip" {
-		return zipFilePath, newError(FAILED_TO_DOWNLOAD_FILE, fmt.Sprintf("Failed to download file at the url %s. Expected HTTP Response's \"Content-Type\" header to be \"application/zip\", but was \"%s\"", req.URL.String(), resp.Header.Get("Content-Type")))
+		errMsg := "Failed to download file at the url %s. " +
+			"Expected HTTP Response's \"Content-Type\" header " +
+			"to be \"application/zip\", but was \"%s\""
+
+		return zipFilePath, newError(
+			FAILED_TO_DOWNLOAD_FILE,
+			fmt.Sprintf(errMsg, req.URL.String(), resp.Header.Get("Content-Type")),
+		)
 	}
 
 	// Copy the contents of the downloaded file to our empty file
@@ -128,31 +139,31 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	return nil
 }
 
-func Unpack(sourceFileName, destDir string) (err error) {
+func unpack(sourceFileName, destDir string) (err error) {
 	if err != nil {
 		return err
 	}
-	fileExt, err := DetectFileType(sourceFileName)
+	fileExt, err := detectFileType(sourceFileName)
 	if err != nil {
 		return fmt.Errorf("Error detecting filetype of %s: %s", sourceFileName, err)
 	}
 
 	switch fileExt {
 	case "gz":
-		if err = Gunzip(sourceFileName, destDir); err != nil {
+		if err = gunzip(sourceFileName, destDir); err != nil {
 			return err
 		}
 	case "tar":
-		if err = Untar(sourceFileName, destDir); err != nil {
+		if err = untar(sourceFileName, destDir); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// DetectFileType: we only care if the asset if a tar or gzip
+// detectFileType : we only care if the asset if a tar or gzip
 // ... otherwise we deliver as is.
-func DetectFileType(source string) (fileExt string, err error) {
+func detectFileType(source string) (fileExt string, err error) {
 	buf, err := ioutil.ReadFile(source)
 	if err != nil {
 		err = fmt.Errorf("Failed to read file %s to get mimetype: %s", source, err)
@@ -165,8 +176,8 @@ func DetectFileType(source string) (fileExt string, err error) {
 	return
 }
 
-// Gunzip: Remember, a gzip will only contain a single file
-func Gunzip(sourceFileName, destDir string) error {
+// gunzip : Remember, a gzip will only contain a single file
+func gunzip(sourceFileName, destDir string) error {
 	reader, err := os.Open(sourceFileName)
 	if err != nil {
 		return err
@@ -201,7 +212,7 @@ func Gunzip(sourceFileName, destDir string) error {
 	}
 
 	// now untar if needed
-	if err = Unpack(newSource, destDir); err != nil {
+	if err = unpack(newSource, destDir); err != nil {
 		return err
 	}
 
@@ -212,7 +223,8 @@ func Gunzip(sourceFileName, destDir string) error {
 	return err
 }
 
-func Untar(sourceFileName, destDir string) error {
+// untar : untars arg1 archive in to arg2 dir
+func untar(sourceFileName, destDir string) error {
 	fmt.Printf("Untarring %s\n", sourceFileName)
 	reader, err := os.Open(sourceFileName)
 	if err != nil {
@@ -264,9 +276,9 @@ func Untar(sourceFileName, destDir string) error {
 	return nil
 }
 
-// Return an HTTP request that will fetch the given GitHub repo's zip file for the given tag, possibly with the gitHubOAuthToken in the header
-// Respects the GitHubCommit hierarchy as defined in the code comments for GitHubCommit (e.g. GitTag > commitSha)
-func MakeGitHubZipFileRequest(gitHubCommit GitHubCommit, gitHubToken string) (*http.Request, error) {
+// gitHubZipRequest : returns HTTP request for zipball
+// Sha trumps branch which trumps tag.
+func gitHubZipRequest(gitHubCommit GitHubCommit, gitHubToken string) (*http.Request, error) {
 	var request *http.Request
 
 	// This represents either a commit, branch, or git tag
@@ -278,10 +290,17 @@ func MakeGitHubZipFileRequest(gitHubCommit GitHubCommit, gitHubToken string) (*h
 	} else if gitHubCommit.GitTag != "" {
 		gitRef = gitHubCommit.GitTag
 	} else {
-		return request, fmt.Errorf("Neither a commitSha nor a GitTag nor a branch were specified so impossible to identify a specific commit to download.")
+		msg := "Neither a commitSha nor a GitTag nor a branch were specified " +
+			"so impossible to identify a specific commit to download."
+		return request, fmt.Errorf(msg)
 	}
 
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/zipball/%s", gitHubCommit.Repo.Owner, gitHubCommit.Repo.Name, gitRef)
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/zipball/%s",
+		gitHubCommit.Repo.Owner,
+		gitHubCommit.Repo.Name,
+		gitRef,
+	)
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

@@ -34,7 +34,7 @@ func TestGpgVerify(t *testing.T) {
 		gpgPubKey := fmt.Sprintf("%s/%s/gpg.pub", usersDir, tc.user)
 		gpgSigPath := fmt.Sprintf("%s/%s", ascDir, tc.asc)
 		assetPath := fmt.Sprintf("%s/%s", assetsDir, tc.asset)
-		err := GpgVerify(gpgPubKey, gpgSigPath, assetPath)
+		err := gpgVerify(gpgPubKey, gpgSigPath, assetPath)
 		if tc.res && err != nil {
 			msg := "Failed to successfully verify %s with key %s and sig %s: %s"
 			t.Fatalf(msg, assetPath, gpgPubKey, gpgSigPath, err)

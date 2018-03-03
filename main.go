@@ -1,3 +1,8 @@
+/*
+	Package main is the Highlander of namespaces.
+
+	There can be only one.
+*/
 package main
 
 import (
@@ -8,13 +13,13 @@ import (
 	"path"
 )
 
-// VERSION: set at build time with -ldflags
+// VERSION : set at build time with -ldflags
 var VERSION string
 
-// TIMESTAMP: set at build time with -ldflags
+// TIMESTAMP : set at build time with -ldflags
 var TIMESTAMP string
 
-// fetchOpts: user defined opts
+// fetchOpts : user defined opts
 type fetchOpts struct {
 	repoUrl       string
 	commitSha     string
@@ -23,12 +28,12 @@ type fetchOpts struct {
 	githubToken   string
 	fromPaths     []string
 	ReleaseAssets []string
-	Unpack        bool
+	unpack        bool
 	GpgPublicKey  string
 	DownloadDir   string
 }
 
-// releaseDl: data to complete download of a release asset
+// releaseDl : data to complete download of a release asset
 type releaseDl struct {
 	Asset     *GitHubReleaseAsset
 	Name      string
@@ -183,7 +188,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 		githubToken:   c.String(optGithub_token),
 		fromPaths:     c.StringSlice(optFromPath),
 		ReleaseAssets: c.StringSlice(optReleaseAsset),
-		Unpack:        c.Bool(optUnpack),
+		unpack:        c.Bool(optUnpack),
 		GpgPublicKey:  c.String(optGpgPublicKey),
 		DownloadDir:   localDownloadPath,
 	}
@@ -206,7 +211,7 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optReleaseAsset, optTag)
 	}
 
-	if len(o.ReleaseAssets) == 0 && o.Unpack {
+	if len(o.ReleaseAssets) == 0 && o.unpack {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optReleaseAsset)
 	}
 
@@ -255,7 +260,7 @@ func (o *fetchOpts) downloadFromPaths(githubRepo GitHubRepo, latestTag string) e
 		return fmt.Errorf("The commit sha, tag, and branch name are all empty.")
 	}
 
-	localZipFilePath, err := downloadGithubZipFile(gitHubCommit, githubRepo.Token)
+	localZipFilePath, err := getSrcZip(gitHubCommit, githubRepo.Token)
 	if err != nil {
 		return fmt.Errorf("Error occurred while downloading zip file from GitHub repo: %s", err)
 	}
@@ -316,8 +321,8 @@ func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
 			}
 		}
 
-		if o.Unpack {
-			if err := Unpack(assetPath, o.DownloadDir); err != nil {
+		if o.unpack {
+			if err := unpack(assetPath, o.DownloadDir); err != nil {
 				return err
 			}
 		}
@@ -339,7 +344,7 @@ func (a *releaseDl) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, githu
 		return err
 	}
 
-	err := GpgVerify(gpgKey, ascPath, a.LocalPath)
+	err := gpgVerify(gpgKey, ascPath, a.LocalPath)
 	if warning := os.Remove(ascPath); warning != nil {
 		fmt.Printf("Could not remove sig file %s\n", ascPath)
 	}

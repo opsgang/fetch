@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func GpgVerify(gpgPubKey string, gpgSigPath string, assetPath string) error {
+func gpgVerify(gpgPubKey string, gpgSigPath string, assetPath string) error {
 	pubKeyReader, err := os.Open(gpgPubKey)
 	defer pubKeyReader.Close()
 	if err != nil {
@@ -32,7 +32,7 @@ func GpgVerify(gpgPubKey string, gpgSigPath string, assetPath string) error {
 
 	gpg, err := openpgp.CheckArmoredDetachedSignature(keyring, assetReader, sigReader)
 	if err != nil {
-		return fmt.Errorf("GPG verification failed (asset: %s, pub key: %s): %s", assetPath, gpgPubKey, err)
+		return fmt.Errorf("GPG check failed (asset: %s, pub key: %s): %s", assetPath, gpgPubKey, err)
 	}
 
 	for id := range gpg.Identities {
