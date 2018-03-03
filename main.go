@@ -140,13 +140,12 @@ func runFetch(c *cli.Context) error {
 		latestTag, err := getLatestAcceptableTag(o.tagConstraint, tags)
 		if err != nil {
 			if err.errorCode == INVALID_TAG_CONSTRAINT_EXPRESSION {
-				err = errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
+				return errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
 			} else {
 				errMsg := "Error occurred while computing latest tag " +
 					"that satisfies version contraint expression: %s"
-				err = fmt.Errorf(errMsg, err)
+				return fmt.Errorf(errMsg, err)
 			}
-			return err
 		}
 		desiredTag = latestTag
 
@@ -166,14 +165,16 @@ func runFetch(c *cli.Context) error {
 	}
 
 	// Download any requested source files
-	if err := o.downloadFromPaths(repo, desiredTag); err == nil {
+	if err := o.downloadFromPaths(repo, desiredTag); err != nil {
 		return err
 	}
 
 	// Download any requested release assets
-	err := o.downloadReleaseAssets(repo, desiredTag)
+	if err := o.downloadReleaseAssets(repo, desiredTag); err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 func parseOptions(c *cli.Context) fetchOpts {
