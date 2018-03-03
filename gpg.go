@@ -32,7 +32,7 @@ func GpgVerify(gpgPubKey string, gpgSigPath string, assetPath string) error {
 
 	gpg, err := openpgp.CheckArmoredDetachedSignature(keyring, assetReader, sigReader)
 	if err != nil {
-		return fmt.Errorf("GPG verification failed (asset: %s, pub key: %s)", assetPath, gpgPubKey, err)
+		return fmt.Errorf("GPG verification failed (asset: %s, pub key: %s): %s", assetPath, gpgPubKey, err)
 	}
 
 	for id := range gpg.Identities {
