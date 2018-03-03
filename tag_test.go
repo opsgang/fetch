@@ -32,7 +32,11 @@ func TestGetLatestAcceptableTag(t *testing.T) {
 	for _, tc := range cases {
 		tag, err := getLatestAcceptableTag(tc.tagConstraint, tc.tags)
 		if err != nil {
-			t.Fatalf("Failed on call to getLatestAcceptableTag: %s", err.details)
+			if fe, ok := err.(*FetchError) ; ok {
+				t.Fatalf("Failed on call to getLatestAcceptableTag: %s", fe.details)
+			} else {
+				t.Fatalf("Failed on call to getLatestAcceptableTag: %s", err)
+			}
 		}
 
 		if tag != tc.expectedTag {
@@ -94,7 +98,11 @@ func TestGetLatestAcceptableTagOnEmptyConstraint(t *testing.T) {
 	for _, tc := range cases {
 		tag, err := getLatestAcceptableTag(tc.tagConstraint, tc.tags)
 		if err != nil {
-			t.Fatalf("Failed on call to getLatestAcceptableTag: %s", err.details)
+			if fe, ok := err.(*FetchError) ; ok {
+				t.Fatalf("Failed on call to getLatestAcceptableTag: %s", fe.details)
+			} else {
+				t.Fatalf("Failed on call to getLatestAcceptableTag: %s", err)
+			}
 		}
 
 		if tag != tc.expectedTag {

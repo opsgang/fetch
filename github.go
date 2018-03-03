@@ -63,7 +63,7 @@ type GitHubReleaseAsset struct {
 }
 
 // Fetch all tags from the given GitHub repo
-func FetchTags(githubRepoUrl string, githubToken string) ([]string, *FetchError) {
+func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 	var tagsString []string
 
 	repo, err := ParseUrlIntoGitHubRepo(githubRepoUrl, githubToken)

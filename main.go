@@ -4,7 +4,6 @@ There can be only one.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/urfave/cli"
 	"os"
@@ -96,7 +95,7 @@ func main() {
 		cli.StringFlag{
 			Name:   optGithubToken,
 			Usage:  txtToken,
-			EnvVar: "GITHUB_OAUTH_TOKEN,GITHUB_TOKEN",
+			EnvVar: "GITHUB_TOKEN,GITHUB_OAUTH_TOKEN",
 		},
 	}
 
@@ -122,16 +121,18 @@ func runFetch(c *cli.Context) error {
 		return err
 	}
 
+	if o.githubToken == "" {
+		fmt.Println("WARNING: no github token provided - will be severely rate-limited by GitHub API")
+	}
+
 	// Get the tags for the given repo
 	tags, err := FetchTags(o.repoUrl, o.githubToken)
 	if err != nil {
-		if err.errorCode == INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED {
-			return errors.New(getErrorMessage(INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED, err.details))
-		} else if err.errorCode == REPO_DOES_NOT_EXIST_OR_ACCESS_DENIED {
-			return errors.New(getErrorMessage(REPO_DOES_NOT_EXIST_OR_ACCESS_DENIED, err.details))
-		} else {
-			return fmt.Errorf("Error occurred while getting tags from GitHub repo: %s", err)
+
+		if fe, ok := err.(*FetchError); ok && fe.errorCode != -1 {
+			return fe
 		}
+		return fmt.Errorf("Error occurred while getting tags from GitHub repo: %s", err)
 	}
 
 	specific, desiredTag := isTagConstraintSpecificTag(o.tagConstraint)
@@ -139,13 +140,17 @@ func runFetch(c *cli.Context) error {
 		// Find the specific release that matches the latest version constraint
 		latestTag, err := getLatestAcceptableTag(o.tagConstraint, tags)
 		if err != nil {
-			if err.errorCode == INVALID_TAG_CONSTRAINT_EXPRESSION {
-				return errors.New(getErrorMessage(INVALID_TAG_CONSTRAINT_EXPRESSION, err.details))
-			} else {
-				errMsg := "Error occurred while computing latest tag " +
-					"that satisfies version contraint expression: %s"
-				return fmt.Errorf(errMsg, err)
+
+			errMsg := "Error occurred while computing latest tag " +
+				"that satisfies version contraint expression: %s"
+
+			if fe, ok := err.(*FetchError); ok {
+				if fe.errorCode == -1 {
+					fe.details = fmt.Sprintf(errMsg, fe.details)
+				}
+				return fe
 			}
+			return fmt.Errorf(errMsg, err)
 		}
 		desiredTag = latestTag
 
@@ -155,7 +160,15 @@ func runFetch(c *cli.Context) error {
 	// Prepare the vars we'll need to download
 	repo, err := ParseUrlIntoGitHubRepo(o.repoUrl, o.githubToken)
 	if err != nil {
-		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
+		errMsg := "Error occurred while parsing GitHub URL: %s"
+		if fe, ok := err.(*FetchError); ok {
+			if fe != nil {
+				fe.details = fmt.Sprintf(errMsg, fe.details)
+				return fe
+			}
+		} else {
+			return fmt.Errorf(errMsg, err)
+		}
 	}
 
 	// If no release assets or from-paths specified, assume
@@ -384,38 +397,3 @@ func cleanupZipFile(localZipFilePath string) error {
 	return nil
 }
 
-func getErrorMessage(errorCode int, errorDetails string) string {
-	switch errorCode {
-	case INVALID_TAG_CONSTRAINT_EXPRESSION:
-		return fmt.Sprintf(`
-The --tag value you entered is not a valid constraint expression.
-See https://github.com/opsgang/fetch#version-constraint-operators for examples.
-
-Underlying error message:
-%s
-`, errorDetails)
-	case INVALID_GITHUB_TOKEN_OR_ACCESS_DENIED:
-		return fmt.Sprintf(`
-Received an HTTP 401 Response when attempting to query the repo for its tags.
-
-Either your GitHub OAuth Token is invalid, or that you don't have access to
-the repo with that token. Is the repo private?
-
-Underlying error message:
-%s
-`, errorDetails)
-	case REPO_DOES_NOT_EXIST_OR_ACCESS_DENIED:
-		return fmt.Sprintf(`
-Received an HTTP 404 Response when attempting to query the repo for its tags.
-
-Either the URL does not exist, or you don't have permission to access it.
-If the repo is private, you will need to set GITHUB_TOKEN (or GITHUB_OAUTH_TOKEN)
-in the env before invoking fetch.
-
-Underlying error message:
-%s
-`, errorDetails)
-	}
-
-	return ""
-}

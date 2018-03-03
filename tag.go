@@ -26,7 +26,7 @@ func isTagConstraintSpecificTag(tagConstraint string) (bool, string) {
 	return false, tagConstraint
 }
 
-func getLatestAcceptableTag(tagConstraint string, tags []string) (string, *FetchError) {
+func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error) {
 	var latestTag string
 
 	if len(tags) == 0 {
@@ -39,7 +39,7 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, *Fetch
 	for i, tag := range tags {
 		v, err := version.NewVersion(tag)
 		if err != nil {
-			return latestTag, wrapError(err)
+			return latestTag, err
 		}
 
 		versions[i] = v
@@ -54,8 +54,8 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, *Fetch
 	// Find the latest version that matches the given tag constraint
 	constraints, err := version.NewConstraint(tagConstraint)
 	if err != nil {
-		// Explicitly check for a malformed tag value so we can return a nice error to the user
-		var fe *FetchError
+		// Explicitly check for a malformed tag value so we can return a nicer error to the user
+		var fe error
 		if strings.Contains(err.Error(), "Malformed constraint") {
 			fe = newError(INVALID_TAG_CONSTRAINT_EXPRESSION, err.Error())
 		} else {
@@ -73,6 +73,7 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, *Fetch
 
 	// check constraint against latest acceptable version
 	if !constraints.Check(latestAcceptableVersion) {
+
 		return latestTag, wrapError(errors.New("Tag does not exist"))
 	}
 
