@@ -396,4 +396,3 @@ func cleanupZipFile(localZipFilePath string) error {
 
 	return nil
 }
-

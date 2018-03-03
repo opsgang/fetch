@@ -12,7 +12,7 @@ type FetchError struct {
 // Implement the golang Error interface
 func (e *FetchError) Error() string {
 	var str string
-	if str = getErrorMessage(e.errorCode, e.details) ; str == "" {
+	if str = getErrorMessage(e.errorCode, e.details); str == "" {
 		str = fmt.Sprintf("%d - %s", e.errorCode, e.details)
 	}
 
