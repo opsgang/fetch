@@ -40,7 +40,7 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 			GitTag: tc.gitTag,
 		}
 
-		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -74,7 +74,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 			branch: tc.branch,
 		}
 
-		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -107,7 +107,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 			branch: tc.branch,
 		}
 
-		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
 			t.Fatalf("Expected that attempt to download repo %s/%s for branch \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.branch)
@@ -138,7 +138,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 			commitSha: tc.commitSha,
 		}
 
-		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -176,7 +176,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 			commitSha: tc.commitSha,
 		}
 
-		zipFilePath, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
 			t.Fatalf("Expected that attempt to download repo %s/%s at commmit sha \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.commitSha)
@@ -205,8 +205,8 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 			GitTag: tc.gitTag,
 		}
 
-		_, err := getSrcZip(gitHubCommit, tc.githubToken)
-		if err == nil && err.errorCode != 500 {
+		_, status, err := getSrcZip(gitHubCommit, tc.githubToken)
+		if err == nil && status != 500 {
 			t.Fatalf("Expected error for bad repo values: %s/%s:%s", tc.repoOwner, tc.repoName, tc.gitTag)
 		}
 	}

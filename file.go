@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"gopkg.in/h2non/filetype.v1"
 	"io"
@@ -15,48 +16,54 @@ import (
 	"strings"
 )
 
+const FAILED_ZIPBALL_DOWNLOAD = `
+Failed to download file at the url %s.
+Received HTTP Response %d.
+`
+
+const CONTENT_TYPE_NOT_ZIP = `
+Failed to download file at the url %s.
+Expected HTTP Response's "Content-Type" header to be "application/zip", but was "%s"
+`
+
 // Download the zip file at the given URL to a temporary local directory.
 // Returns the absolute path to the downloaded zip file.
 // IMPORTANT: You must call "defer os.RemoveAll(dir)" in the calling function when done with the downloaded zip file!
-func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, *FetchError) {
+func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, int, error) {
 
 	var zipFilePath string
+	var rStatus int
 
 	// Create a temp directory
 	// Note that ioutil.TempDir has a peculiar interface. We need not specify any meaningful values to achieve our
 	// goal of getting a temporary directory.
 	tempDir, err := ioutil.TempDir("", "")
 	if err != nil {
-		return zipFilePath, wrapError(err)
+		return zipFilePath, rStatus, err
 	}
 
 	// Download the zip file, possibly using the GitHub oAuth Token
 	httpClient := &http.Client{}
 	req, err := gitHubZipRequest(gitHubCommit, gitHubToken)
 	if err != nil {
-		return zipFilePath, wrapError(err)
+		return zipFilePath, rStatus, err
 	}
 
 	resp, err := httpClient.Do(req)
-	if err != nil {
-		return zipFilePath, wrapError(err)
-	}
-	if resp.StatusCode != 200 {
-		errMsg := "Failed to download file at the url %s. Received HTTP Response %d."
-		return zipFilePath, newError(
-			FAILED_TO_DOWNLOAD_FILE,
-			fmt.Sprintf(errMsg, req.URL.String(), resp.StatusCode),
-		)
-	}
-	if resp.Header.Get("Content-Type") != "application/zip" {
-		errMsg := "Failed to download file at the url %s. " +
-			"Expected HTTP Response's \"Content-Type\" header " +
-			"to be \"application/zip\", but was \"%s\""
 
-		return zipFilePath, newError(
-			FAILED_TO_DOWNLOAD_FILE,
-			fmt.Sprintf(errMsg, req.URL.String(), resp.Header.Get("Content-Type")),
-		)
+	rStatus = resp.StatusCode
+	if err != nil {
+		return zipFilePath, rStatus, err
+	}
+
+	if resp.StatusCode != 200 {
+		errMsg := fmt.Sprintf(FAILED_ZIPBALL_DOWNLOAD, req.URL.String(), resp.StatusCode)
+		return zipFilePath, rStatus, errors.New(errMsg)
+	}
+
+	if resp.Header.Get("Content-Type") != "application/zip" {
+		errMsg := fmt.Sprintf(CONTENT_TYPE_NOT_ZIP, req.URL.String(), resp.Header.Get("Content-Type"))
+		return zipFilePath, rStatus, errors.New(errMsg)
 	}
 
 	// Copy the contents of the downloaded file to our empty file
@@ -64,12 +71,12 @@ func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, *FetchErr
 	respBodyBuffer.ReadFrom(resp.Body)
 	err = ioutil.WriteFile(filepath.Join(tempDir, "repo.zip"), respBodyBuffer.Bytes(), 0644)
 	if err != nil {
-		return zipFilePath, wrapError(err)
+		return zipFilePath, rStatus, err
 	}
 
 	zipFilePath = filepath.Join(tempDir, "repo.zip")
 
-	return zipFilePath, nil
+	return zipFilePath, rStatus, err
 }
 
 // Decompress the file at zipFileAbsPath and move only those files under filesToExtractFromZipPath to localPath
@@ -304,7 +311,7 @@ func gitHubZipRequest(gitHubCommit GitHubCommit, gitHubToken string) (*http.Requ
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return request, wrapError(err)
+		return request, err
 	}
 
 	if gitHubToken != "" {

@@ -1,5 +1,19 @@
 # TODO
 
+## error handling
+
+I want to reduce cyclomatic complexitiy of functions. This can be achieved
+by returning only the one type of error from a function. e.g. not 'error' and FetchError,
+but only FetchError.
+
+Separate out http response codes - see newError e.g. in github.go:callGitHubApi()
+Stop with error codes for anything else.
+
+That means FetchError only needs a message constructed.
+
+**In fact we probably don't need FetchError at all, but just error, and some functions
+to construct the error messages.**
+
 ## --tag-prefix (filter)
 
 Account for only fetching tags that have a prefix with an optional delimiter

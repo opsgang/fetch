@@ -10,6 +10,11 @@ import (
 	"path"
 )
 
+//
+const NO_VALID_TAG_FOUND = `
+Error occurred while computing latest tag that satisfies version contraint expression: %s
+`
+
 // VERSION : set at build time with -ldflags
 var VERSION string
 
@@ -128,10 +133,6 @@ func runFetch(c *cli.Context) error {
 	// Get the tags for the given repo
 	tags, err := FetchTags(o.repoUrl, o.githubToken)
 	if err != nil {
-
-		if fe, ok := err.(*FetchError); ok && fe.errorCode != -1 {
-			return fe
-		}
 		return fmt.Errorf("Error occurred while getting tags from GitHub repo: %s", err)
 	}
 
@@ -140,17 +141,7 @@ func runFetch(c *cli.Context) error {
 		// Find the specific release that matches the latest version constraint
 		latestTag, err := getLatestAcceptableTag(o.tagConstraint, tags)
 		if err != nil {
-
-			errMsg := "Error occurred while computing latest tag " +
-				"that satisfies version contraint expression: %s"
-
-			if fe, ok := err.(*FetchError); ok {
-				if fe.errorCode == -1 {
-					fe.details = fmt.Sprintf(errMsg, fe.details)
-				}
-				return fe
-			}
-			return fmt.Errorf(errMsg, err)
+			return fmt.Errorf(NO_VALID_TAG_FOUND, err)
 		}
 		desiredTag = latestTag
 
@@ -160,15 +151,7 @@ func runFetch(c *cli.Context) error {
 	// Prepare the vars we'll need to download
 	repo, err := ParseUrlIntoGitHubRepo(o.repoUrl, o.githubToken)
 	if err != nil {
-		errMsg := "Error occurred while parsing GitHub URL: %s"
-		if fe, ok := err.(*FetchError); ok {
-			if fe != nil {
-				fe.details = fmt.Sprintf(errMsg, fe.details)
-				return fe
-			}
-		} else {
-			return fmt.Errorf(errMsg, err)
-		}
+		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
 
 	// If no release assets or from-paths specified, assume
@@ -273,7 +256,7 @@ func (o *fetchOpts) downloadFromPaths(githubRepo GitHubRepo, latestTag string) e
 		return fmt.Errorf("The commit sha, tag, and branch name are all empty.")
 	}
 
-	localZipFilePath, err := getSrcZip(gitHubCommit, githubRepo.Token)
+	localZipFilePath, _, err := getSrcZip(gitHubCommit, githubRepo.Token)
 	if err != nil {
 		return fmt.Errorf("Error occurred while downloading zip file from GitHub repo: %s", err)
 	}

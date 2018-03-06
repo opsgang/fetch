@@ -2,10 +2,19 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hashicorp/go-version"
 	"sort"
 	"strings"
 )
+
+const INVALID_TAG_CONSTRAINT = `
+The --tag value you entered is not a valid constraint expression.
+See https://github.com/opsgang/fetch#version-constraint-operators for examples.
+
+Underlying error message:
+%s
+`
 
 func isTagConstraintSpecificTag(tagConstraint string) (bool, string) {
 	if len(tagConstraint) > 0 {
@@ -54,14 +63,11 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 	// Find the latest version that matches the given tag constraint
 	constraints, err := version.NewConstraint(tagConstraint)
 	if err != nil {
-		// Explicitly check for a malformed tag value so we can return a nicer error to the user
-		var fe error
+		// more useful err msg if hashicorp consider a constraint invalid.
 		if strings.Contains(err.Error(), "Malformed constraint") {
-			fe = newError(INVALID_TAG_CONSTRAINT_EXPRESSION, err.Error())
-		} else {
-			fe = wrapError(err)
+			err = fmt.Errorf(INVALID_TAG_CONSTRAINT, err.Error())
 		}
-		return latestTag, fe
+		return latestTag, err
 	}
 
 	latestAcceptableVersion := versions[0]
@@ -72,9 +78,8 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 	}
 
 	// check constraint against latest acceptable version
-	if !constraints.Check(latestAcceptableVersion) {
-
-		return latestTag, wrapError(errors.New("Tag does not exist"))
+	if ! constraints.Check(latestAcceptableVersion) {
+		return latestTag, errors.New("Tag does not exist")
 	}
 
 	// The tag name may have started with a "v". If so, re-apply that string now

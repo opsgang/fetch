@@ -68,11 +68,11 @@ func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 
 	repo, err := ParseUrlIntoGitHubRepo(githubRepoUrl, githubToken)
 	if err != nil {
-		return tagsString, wrapError(err)
+		return tagsString, err
 	}
 
 	url := createGitHubRepoUrlForPath(repo, "tags")
-	resp, err := callGitHubApi(repo, url, map[string]string{})
+	resp, err := repo.callGitHubApi(url, map[string]string{})
 	if err != nil {
 		return tagsString, err
 	}
@@ -85,7 +85,7 @@ func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 	// Extract the JSON into our array of gitHubTagsCommitApiResponse's
 	var tags []GitHubTagsApiResponse
 	if err := json.Unmarshal(jsonResp, &tags); err != nil {
-		return tagsString, wrapError(err)
+		return tagsString, err
 	}
 
 	for _, tag := range tags {
@@ -96,17 +96,17 @@ func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 }
 
 // Convert a URL into a GitHubRepo struct
-func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, *FetchError) {
+func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, error) {
 	var gitHubRepo GitHubRepo
 
 	regex, regexErr := regexp.Compile("https?://(?:www\\.)?github.com/(.+?)/(.+?)(?:$|\\?|#|/)")
 	if regexErr != nil {
-		return gitHubRepo, newError(GITHUB_REPO_URL_MALFORMED_OR_NOT_PARSEABLE, fmt.Sprintf("GitHub Repo URL %s is malformed.", url))
+		return gitHubRepo, fmt.Errorf("GitHub Repo URL %s is malformed.", url)
 	}
 
 	matches := regex.FindStringSubmatch(url)
 	if len(matches) != 3 {
-		return gitHubRepo, newError(GITHUB_REPO_URL_MALFORMED_OR_NOT_PARSEABLE, fmt.Sprintf("GitHub Repo URL %s could not be parsed correctly", url))
+		return gitHubRepo, fmt.Errorf("GitHub Repo URL %s could not be parsed correctly", url)
 	}
 
 	gitHubRepo = GitHubRepo{
@@ -120,9 +120,9 @@ func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, *FetchError) 
 }
 
 // Download the release asset with the given id and return its body
-func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) *FetchError {
+func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) error {
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/assets/%d", assetId))
-	resp, err := callGitHubApi(repo, url, map[string]string{"Accept": "application/octet-stream"})
+	resp, err := repo.callGitHubApi(url, map[string]string{"Accept": "application/octet-stream"})
 	if err != nil {
 		return err
 	}
@@ -131,11 +131,11 @@ func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) *FetchErro
 }
 
 // Get information about the GitHub release with the given tag
-func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse, *FetchError) {
+func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse, error) {
 	release := GitHubReleaseApiResponse{}
 
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/tags/%s", tag))
-	resp, err := callGitHubApi(repo, url, map[string]string{})
+	resp, err := repo.callGitHubApi(url, map[string]string{})
 	if err != nil {
 		return release, err
 	}
@@ -145,11 +145,9 @@ func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse
 	buf.ReadFrom(resp.Body)
 	jsonResp := buf.Bytes()
 
-	if err := json.Unmarshal(jsonResp, &release); err != nil {
-		return release, wrapError(err)
-	}
+	err = json.Unmarshal(jsonResp, &release)
 
-	return release, nil
+	return release, err
 }
 
 // Craft a URL for the GitHub repos API of the form repos/:owner/:repo/:path
@@ -158,25 +156,26 @@ func createGitHubRepoUrlForPath(repo GitHubRepo, path string) string {
 }
 
 // Call the GitHub API at the given path and return the HTTP response
-func callGitHubApi(repo GitHubRepo, path string, customHeaders map[string]string) (*http.Response, *FetchError) {
+func (r GitHubRepo) callGitHubApi(path string, headers map[string]string) (*http.Response, error) {
+	url := fmt.Sprintf("https://api.github.com/%s", path)
 	httpClient := &http.Client{}
 
-	request, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/%s", path), nil)
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, wrapError(err)
+		return nil, fmt.Errorf("Failed creating request object for %s: %s", url, err)
 	}
 
-	if repo.Token != "" {
-		request.Header.Set("Authorization", fmt.Sprintf("token %s", repo.Token))
+	if r.Token != "" {
+		request.Header.Set("Authorization", fmt.Sprintf("token %s", r.Token))
 	}
 
-	for headerName, headerValue := range customHeaders {
+	for headerName, headerValue := range headers {
 		request.Header.Set(headerName, headerValue)
 	}
 
 	resp, err := httpClient.Do(request)
 	if err != nil {
-		return nil, wrapError(err)
+		return nil, err
 	}
 	if resp.StatusCode != 200 {
 		// Convert the resp.Body to a string
@@ -184,23 +183,73 @@ func callGitHubApi(repo GitHubRepo, path string, customHeaders map[string]string
 		buf.ReadFrom(resp.Body)
 		respBody := buf.String()
 
-		// We leverage the HTTP Response Code as our ErrorCode here.
-		return nil, newError(resp.StatusCode, fmt.Sprintf("Received HTTP Response %d while fetching releases for GitHub URL %s. Full HTTP response: %s", resp.StatusCode, repo.Url, respBody))
+		// Return err on non-200
+		return nil, ghApiErr(resp.StatusCode, r.Url, respBody)
 	}
 
 	return resp, nil
 }
 
 // Write the body of the given HTTP response to disk at the given path
-func writeResponseToDisk(resp *http.Response, destPath string) *FetchError {
+func writeResponseToDisk(resp *http.Response, destPath string) error {
 	out, err := os.Create(destPath)
 	if err != nil {
-		return wrapError(err)
+		return err
 	}
 
 	defer out.Close()
 	defer resp.Body.Close()
 
 	_, err = io.Copy(out, resp.Body)
-	return wrapError(err)
+	return err
 }
+
+// ghApiErr : returns a valid `error` obj
+func ghApiErr(status int, url string, body string) error {
+	var tmpl string
+	switch {
+
+	case status == 401:
+		tmpl = `
+Received an HTTP %d Response when attempting to query the repo's tags.
+url: %s
+
+Either your GitHub OAuth Token is invalid, or you don't have access to
+the repo with that token. Is the repo private?
+
+http response:
+%s
+`
+	case status == 404:
+		tmpl = `
+Received an HTTP %d Response when attempting to query the repo for its tags.
+url: %s
+
+Either the URL does not exist, or you don't have permission to access it.
+If the repo is private, you need to set GITHUB_TOKEN (or GITHUB_OAUTH_TOKEN)
+in the env before invoking fetch.
+
+http response:
+%s
+`
+	case status >= 500 && status  < 600:
+		tmpl = `
+Received HTTP response %d from GitHub. Is it down?
+url: %s
+
+http response:
+%s
+`
+	default:
+		tmpl = `
+Received non-200 HTTP response %d from GitHub. Could not fulfill request."
+url: %s
+
+http response:
+%s
+`
+	} // end switch
+
+	return fmt.Errorf(tmpl, status, url, body)
+}
+
