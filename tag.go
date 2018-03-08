@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hashicorp/go-version"
 	"sort"
@@ -42,17 +41,31 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 		return latestTag, nil
 	}
 
-	// Sort all tags
-	// Our use of the library go-version means that each tag will each be represented as a *version.Version
-	versions := make([]*version.Version, len(tags))
-	for i, tag := range tags {
+	// We use Hashicorp go-versions comparison to find tags that are
+	// semantic version strings.
+	var versions []*version.Version
+	for _, tag := range tags {
 		v, err := version.NewVersion(tag)
 		if err != nil {
+			if strings.Contains(err.Error(), "Malformed version") {
+				fmt.Printf("ignoring tag %#v\n", v)
+				continue // ignore tags that do not fit expected semver
+			}
 			return latestTag, err
 		}
 
-		versions[i] = v
+		versions = append(versions, v)
 	}
+
+	if len(versions) == 0 {
+		return latestTag, fmt.Errorf("No valid git tags found")
+	} else {
+		for _, val := range versions {
+			fmt.Printf("captured tag %#v\n", val)
+		}
+	}
+
+	// Sort all tags so that last is latest.
 	sort.Sort(version.Collection(versions))
 
 	// If the tag constraint is empty, set it to the latest tag
@@ -79,7 +92,7 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 
 	// check constraint against latest acceptable version
 	if ! constraints.Check(latestAcceptableVersion) {
-		return latestTag, errors.New("Tag does not exist")
+		return latestTag, fmt.Errorf("No tag met constraint.\n")
 	}
 
 	// The tag name may have started with a "v". If so, re-apply that string now

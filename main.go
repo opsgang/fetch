@@ -120,7 +120,7 @@ func runFetchWrapper(c *cli.Context) {
 }
 
 // Run the ghfetch program
-func runFetch(c *cli.Context) error {
+func runFetch(c *cli.Context) (err error) {
 	o := parseOptions(c)
 	if err := validateOptions(o); err != nil {
 		return err
@@ -131,7 +131,13 @@ func runFetch(c *cli.Context) error {
 	}
 
 	// Get the tags for the given repo
-	tags, err := FetchTags(o.repoUrl, o.githubToken)
+	// or tags for actual releases if getting release assets.
+	var tags []string
+	if len(o.ReleaseAssets) == 0 {
+		tags, err = FetchTags(o.repoUrl, o.githubToken)
+	} else {
+		tags, err = o.fetchReleaseTags()
+	}
 	if err != nil {
 		return fmt.Errorf("Error occurred while getting tags from GitHub repo: %s", err)
 	}
@@ -170,7 +176,7 @@ func runFetch(c *cli.Context) error {
 		return err
 	}
 
-	return nil
+	return
 }
 
 func parseOptions(c *cli.Context) fetchOpts {
@@ -205,6 +211,10 @@ func validateOptions(o fetchOpts) error {
 
 	if len(o.ReleaseAssets) > 0 && o.tagConstraint == "" {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optReleaseAsset, optTag)
+	}
+
+	if len(o.ReleaseAssets) > 0 && len(o.fromPaths) >0 {
+		return fmt.Errorf("Specify only --%s or --%s, not both.", optReleaseAsset, optFromPath)
 	}
 
 	if len(o.ReleaseAssets) == 0 && o.unpack {
@@ -287,6 +297,7 @@ func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
 
 	release, err := GetGitHubReleaseInfo(repo, tag)
 	if err != nil {
+		fmt.Println("getting release info")
 		return err
 	}
 

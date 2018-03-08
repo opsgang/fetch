@@ -26,8 +26,8 @@ type GitHubRepo struct {
 type GitHubCommit struct {
 	Repo      GitHubRepo // The GitHub repo where this release lives
 	GitTag    string     // The specific git tag for this release
-	branch    string     // If specified, indicates that this commit should be the latest commit on the given branch
-	commitSha string     // If specified, indicates that this commit should be exactly this Git Commit SHA.
+	branch    string     // If specified, will find HEAD commit
+	commitSha string     // Specific sha
 }
 
 // Modeled directly after the api.github.com response
@@ -47,10 +47,12 @@ type GitHubTagsCommitApiResponse struct {
 // Modeled directly after the api.github.com response (but only includes the fields we care about). For more info, see:
 // https://developer.github.com/v3/repos/releases/#get-a-release-by-tag-name
 type GitHubReleaseApiResponse struct {
-	Id     int
-	Url    string
-	Name   string
-	Assets []GitHubReleaseAsset
+	Id         int
+	Url        string
+	Name       string
+	Prerelease bool
+	Tag_name   string
+	Assets     []GitHubReleaseAsset
 }
 
 // The "assets" portion of the GitHubReleaseApiResponse. Modeled directly after the api.github.com response (but only
@@ -60,6 +62,83 @@ type GitHubReleaseAsset struct {
 	Id   int
 	Url  string
 	Name string
+}
+
+/*
+fetchReleaseTags ()
+returns a list of tags to releases that are:
+i) published
+ii) contain the desired --release-assets
+iii) starts with --tag-prefix if specified
+*/
+func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
+	var tagsString []string
+
+	repo, err := ParseUrlIntoGitHubRepo(o.repoUrl, o.githubToken)
+	if err != nil {
+		return tagsString, err
+	}
+
+	// TODO - abstract and iterate over pages using header data
+	url := createGitHubRepoUrlForPath(repo, "releases?per_page=100")
+	resp, err := repo.callGitHubApi(url, map[string]string{})
+	if err != nil {
+		return tagsString, err
+	}
+
+	// Convert the response body to a byte array
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(resp.Body)
+	jsonResp := buf.Bytes()
+
+	// Extract the JSON into our array of gitHubTagsCommitApiResponse's
+	var rels []GitHubReleaseApiResponse
+	if err := json.Unmarshal(jsonResp, &rels); err != nil {
+		return tagsString, err
+	}
+
+
+	for _, rel := range rels {
+		// ... skip if prerelease
+		if rel.Prerelease {
+			fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
+			continue
+		}
+		// ... skip if release contains fewer assets than number requested
+		if len(rel.Assets) < len(o.ReleaseAssets) {
+			fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
+			continue
+		}
+
+		var relAssetsList []string
+		for _, a := range rel.Assets {
+			relAssetsList = append(relAssetsList, a.Name)
+		}
+		// ... skip if desired asset not in list of attached assets
+		var missing_asset bool
+		for _, a := range o.ReleaseAssets {
+			if stringInSlice(a, relAssetsList) {
+				continue
+			} else {
+				fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
+				missing_asset = true
+				break
+			}
+		}
+
+		if missing_asset {
+			continue
+		}
+
+		// ... compare rel.Name
+		fmt.Printf("... adding %s for consideration\n",rel.Tag_name)
+		tagsString = append(tagsString, rel.Tag_name)
+	}
+
+	if len(tagsString) == 0 {
+		return tagsString, fmt.Errorf("No single release found with all requested assets")
+	}
+	return tagsString, nil
 }
 
 // Fetch all tags from the given GitHub repo
@@ -184,7 +263,7 @@ func (r GitHubRepo) callGitHubApi(path string, headers map[string]string) (*http
 		respBody := buf.String()
 
 		// Return err on non-200
-		return nil, ghApiErr(resp.StatusCode, r.Url, respBody)
+		return nil, ghApiErr(resp.StatusCode, url, respBody)
 	}
 
 	return resp, nil
@@ -211,7 +290,7 @@ func ghApiErr(status int, url string, body string) error {
 
 	case status == 401:
 		tmpl = `
-Received an HTTP %d Response when attempting to query the repo's tags.
+Received an HTTP %d Response when attempting to query the repo.
 url: %s
 
 Either your GitHub OAuth Token is invalid, or you don't have access to
@@ -222,7 +301,7 @@ http response:
 `
 	case status == 404:
 		tmpl = `
-Received an HTTP %d Response when attempting to query the repo for its tags.
+Received an HTTP %d Response when attempting to query the repo.
 url: %s
 
 Either the URL does not exist, or you don't have permission to access it.
@@ -253,3 +332,11 @@ http response:
 	return fmt.Errorf(tmpl, status, url, body)
 }
 
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
