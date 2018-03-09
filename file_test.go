@@ -402,16 +402,6 @@ func TestUntar(t *testing.T) {
 	})
 }
 
-// Return ture if the given slice contains the given string
-func stringInSlice(s string, slice []string) bool {
-	for _, val := range slice {
-		if val == s {
-			return true
-		}
-	}
-	return false
-}
-
 func copyFile(src string, dst string) error {
 	data, err := ioutil.ReadFile(src)
 	if err != nil {

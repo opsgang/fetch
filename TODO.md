@@ -1,11 +1,5 @@
 # TODO
 
-## http retry on 5xx
-* on all http calls with back-off
-
-## pagination
-* on all api calls
-
 ## mocking of api calls
 
 ## better tests
@@ -39,7 +33,10 @@ downloaded.
 
 # IN PROGRESS
 
-## rename to ghfetch
+## http retry on 5xx
+* on all http calls with back-off
+
+## rename to ghget (it's shorter)
 
 _fetch_ is far too overreaching a name - it only works with the github api, much to
 the exasperation of my bitbucket-using-colleagues.
@@ -51,6 +48,9 @@ to me again.
 Still need to rename all vars, methods that use Fetch to use something else.
 
 # DONE
+
+## pagination
+* on all api calls
 
 ## error handling
 

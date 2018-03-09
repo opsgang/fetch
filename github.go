@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
+	"strconv"
 )
 
 type GitHubRepo struct {
@@ -17,12 +19,22 @@ type GitHubRepo struct {
 	Token string // The personal access token to access this repo (if it's a private repo)
 }
 
-// Represents a specific git commit.
-// Note that code using GitHub Commit should respect the following hierarchy:
-// - commitSha > branch > GitTag
-// - Example: GitTag and branch are both specified; use the GitTag
-// - Example: GitTag and commitSha are both specified; use the commitSha
-// - Example: branch alone is specified; use branch
+// TODO: Client Should have keep-alives and timeouts set.
+// cl : our single instance of http.Client to be reused throughout.
+var cl http.Client
+
+type headers map[string]string
+
+/*
+Hierarchy:
+* commitSha > branch > GitTag
+* Example: GitTag and branch are both specified; use the GitTag
+* Example: GitTag and commitSha are both specified; use the commitSha
+* Example: branch alone is specified; use branch
+*/
+
+// GitHubCommit {}:
+// A specific git commit.
 type GitHubCommit struct {
 	Repo      GitHubRepo // The GitHub repo where this release lives
 	GitTag    string     // The specific git tag for this release
@@ -30,7 +42,7 @@ type GitHubCommit struct {
 	commitSha string     // Specific sha
 }
 
-// Modeled directly after the api.github.com response
+// GitHubTagsApiResponse {}:
 type GitHubTagsApiResponse struct {
 	Name       string // The tag name
 	ZipBallUrl string // The URL where a ZIP of the release can be downloaded
@@ -38,34 +50,33 @@ type GitHubTagsApiResponse struct {
 	Commit     GitHubTagsCommitApiResponse
 }
 
-// Modeled directly after the api.github.com response
+// GitHubTagsCommitApiResponse {}:
 type GitHubTagsCommitApiResponse struct {
 	Sha string // The SHA of the commit associated with a given tag
-	Url string // The URL at which additional API information can be found for the given commit
+	Url string // The URL to get more commit info 
 }
 
-// Modeled directly after the api.github.com response (but only includes the fields we care about). For more info, see:
+// GitHubReleaseApiResponse {}:
 // https://developer.github.com/v3/repos/releases/#get-a-release-by-tag-name
 type GitHubReleaseApiResponse struct {
-	Id         int
-	Url        string
-	Name       string
-	Prerelease bool
-	Tag_name   string
+	Id         int    // release id
+	Url        string // release url
+	Name       string // release name (not tag)
+	Prerelease bool   // not published?
+	Tag_name   string // the associated git tag
 	Assets     []GitHubReleaseAsset
 }
 
-// The "assets" portion of the GitHubReleaseApiResponse. Modeled directly after the api.github.com response (but only
-// includes the fields we care about). For more info, see:
+// GitHubReleaseAsset {}: (release attachment)
 // https://developer.github.com/v3/repos/releases/#get-a-release-by-tag-name
 type GitHubReleaseAsset struct {
-	Id   int
-	Url  string
-	Name string
+	Id   int    // asset id (not release id)
+	Url  string // url to retrieve asset
+	Name string // asset name
 }
 
 /*
-fetchReleaseTags ()
+fetchReleaseTags ():
 returns a list of tags to releases that are:
 i) published
 ii) contain the desired --release-assets
@@ -80,59 +91,62 @@ func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 	}
 
 	// TODO - abstract and iterate over pages using header data
-	url := createGitHubRepoUrlForPath(repo, "releases?per_page=100")
-	resp, err := repo.callGitHubApi(url, map[string]string{})
+	url := createGitHubRepoUrlForPath(repo, "releases")
+	resps, err := repo.callGitHubApi(url, map[string]string{})
 	if err != nil {
 		return tagsString, err
 	}
 
 	// Convert the response body to a byte array
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
-	jsonResp := buf.Bytes()
 
-	// Extract the JSON into our array of gitHubTagsCommitApiResponse's
-	var rels []GitHubReleaseApiResponse
-	if err := json.Unmarshal(jsonResp, &rels); err != nil {
-		return tagsString, err
-	}
+	for _, resp := range resps {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		jsonResp := buf.Bytes()
 
-
-	for _, rel := range rels {
-		// ... skip if prerelease
-		if rel.Prerelease {
-			fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
-			continue
-		}
-		// ... skip if release contains fewer assets than number requested
-		if len(rel.Assets) < len(o.ReleaseAssets) {
-			fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
-			continue
+		// Extract the JSON into our array of gitHubTagsCommitApiResponse's
+		var rels []GitHubReleaseApiResponse
+		if err := json.Unmarshal(jsonResp, &rels); err != nil {
+			return tagsString, err
 		}
 
-		var relAssetsList []string
-		for _, a := range rel.Assets {
-			relAssetsList = append(relAssetsList, a.Name)
-		}
-		// ... skip if desired asset not in list of attached assets
-		var missing_asset bool
-		for _, a := range o.ReleaseAssets {
-			if stringInSlice(a, relAssetsList) {
+
+		for _, rel := range rels {
+			// ... skip if prerelease
+			if rel.Prerelease {
+				fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
 				continue
-			} else {
-				fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
-				missing_asset = true
-				break
 			}
-		}
+			// ... skip if release contains fewer assets than number requested
+			if len(rel.Assets) < len(o.ReleaseAssets) {
+				fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
+				continue
+			}
 
-		if missing_asset {
-			continue
-		}
+			var relAssetsList []string
+			for _, a := range rel.Assets {
+				relAssetsList = append(relAssetsList, a.Name)
+			}
+			// ... skip if desired asset not in list of attached assets
+			var missing_asset bool
+			for _, a := range o.ReleaseAssets {
+				if stringInSlice(a, relAssetsList) {
+					continue
+				} else {
+					fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
+					missing_asset = true
+					break
+				}
+			}
 
-		// ... compare rel.Name
-		fmt.Printf("... adding %s for consideration\n",rel.Tag_name)
-		tagsString = append(tagsString, rel.Tag_name)
+			if missing_asset {
+				continue
+			}
+
+			// ... compare rel.Name
+			fmt.Printf("... adding %s for consideration\n",rel.Tag_name)
+			tagsString = append(tagsString, rel.Tag_name)
+		}
 	}
 
 	if len(tagsString) == 0 {
@@ -150,25 +164,27 @@ func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 		return tagsString, err
 	}
 
-	url := createGitHubRepoUrlForPath(repo, "tags?per_page=100")
-	resp, err := repo.callGitHubApi(url, map[string]string{})
+	url := createGitHubRepoUrlForPath(repo, "tags")
+	resps, err := repo.callGitHubApi(url, map[string]string{})
 	if err != nil {
 		return tagsString, err
 	}
 
-	// Convert the response body to a byte array
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
-	jsonResp := buf.Bytes()
+	for _, resp := range resps {
+		// Convert the response body to a byte array
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		jsonResp := buf.Bytes()
 
-	// Extract the JSON into our array of gitHubTagsCommitApiResponse's
-	var tags []GitHubTagsApiResponse
-	if err := json.Unmarshal(jsonResp, &tags); err != nil {
-		return tagsString, err
-	}
+		// Extract the JSON into our array of gitHubTagsCommitApiResponse's
+		var tags []GitHubTagsApiResponse
+		if err := json.Unmarshal(jsonResp, &tags); err != nil {
+			return tagsString, err
+		}
 
-	for _, tag := range tags {
-		tagsString = append(tagsString, tag.Name)
+		for _, tag := range tags {
+			tagsString = append(tagsString, tag.Name)
+		}
 	}
 
 	return tagsString, nil
@@ -200,8 +216,11 @@ func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, error) {
 
 // Download the release asset with the given id and return its body
 func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) error {
+
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/assets/%d", assetId))
-	resp, err := repo.callGitHubApi(url, map[string]string{"Accept": "application/octet-stream"})
+
+	// ... don't need to use callGitHubApi as that only wraps for pagination.
+	resp, _, err := repo.apiResp(url, "", map[string]string{"Accept": "application/octet-stream"})
 	if err != nil {
 		return err
 	}
@@ -214,7 +233,7 @@ func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse
 	release := GitHubReleaseApiResponse{}
 
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/tags/%s", tag))
-	resp, err := repo.callGitHubApi(url, map[string]string{})
+	resp, _, err := repo.apiResp(url, "", map[string]string{})
 	if err != nil {
 		return release, err
 	}
@@ -234,27 +253,32 @@ func createGitHubRepoUrlForPath(repo GitHubRepo, path string) string {
 	return fmt.Sprintf("repos/%s/%s/%s", repo.Owner, repo.Name, path)
 }
 
-// Call the GitHub API at the given path and return the HTTP response
-func (r GitHubRepo) callGitHubApi(path string, headers map[string]string) (*http.Response, error) {
-	url := fmt.Sprintf("https://api.github.com/%s", path)
-	httpClient := &http.Client{}
+/*
+callGitHubApi ():
+Call the GitHub API, return HTTP response, and next page number if any
+TODO: add retry with exponential backoff
+*/
+func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
+	url := fmt.Sprintf("https://api.github.com/%s?per_page=100&page=%s", path, page)
+
+	next := "" // next page of results if any, assume none
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed creating request object for %s: %s", url, err)
+		return nil, "", fmt.Errorf("Failed creating request object for %s: %s", url, err)
 	}
 
 	if r.Token != "" {
 		request.Header.Set("Authorization", fmt.Sprintf("token %s", r.Token))
 	}
 
-	for headerName, headerValue := range headers {
+	for headerName, headerValue := range h {
 		request.Header.Set(headerName, headerValue)
 	}
 
-	resp, err := httpClient.Do(request)
+	resp, err := cl.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if resp.StatusCode != 200 {
 		// Convert the resp.Body to a string
@@ -263,10 +287,37 @@ func (r GitHubRepo) callGitHubApi(path string, headers map[string]string) (*http
 		respBody := buf.String()
 
 		// Return err on non-200
-		return nil, ghApiErr(resp.StatusCode, url, respBody)
+		return nil, "", ghApiErr(resp.StatusCode, url, respBody)
 	}
 
-	return resp, nil
+	if link, ok := resp.Header["Link"]; ok {
+		for _, l := range link {
+			if strings.Contains(l, "rel=\"next\"") {
+				p, _ := strconv.Atoi(page)
+				n := p + 1
+				next = strconv.Itoa(n)
+			}
+		}
+	}
+
+	return resp, next, err
+}
+
+func (r GitHubRepo) callGitHubApi(path string, h headers) ([]*http.Response, error) {
+	var resps []*http.Response
+	var err error
+	page := "1"
+
+	for page != "" {
+		resp, n, err := r.apiResp(path, page, h)
+		if err !=nil {
+			return resps, err
+		}
+		page = n
+		resps = append(resps, resp)
+	}
+
+	return resps, err
 }
 
 // Write the body of the given HTTP response to disk at the given path
@@ -332,11 +383,3 @@ http response:
 	return fmt.Errorf(tmpl, status, url, body)
 }
 
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}

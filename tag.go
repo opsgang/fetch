@@ -48,7 +48,6 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 		v, err := version.NewVersion(tag)
 		if err != nil {
 			if strings.Contains(err.Error(), "Malformed version") {
-				fmt.Printf("ignoring tag %#v\n", v)
 				continue // ignore tags that do not fit expected semver
 			}
 			return latestTag, err
@@ -59,12 +58,7 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 
 	if len(versions) == 0 {
 		return latestTag, fmt.Errorf("No valid git tags found")
-	} else {
-		for _, val := range versions {
-			fmt.Printf("captured tag %#v\n", val)
-		}
 	}
-
 	// Sort all tags so that last is latest.
 	sort.Sort(version.Collection(versions))
 

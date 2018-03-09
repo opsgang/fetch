@@ -390,3 +390,14 @@ func cleanupZipFile(localZipFilePath string) error {
 
 	return nil
 }
+
+// Return ture if the given slice contains the given string
+func stringInSlice(s string, slice []string) bool {
+	for _, val := range slice {
+		if val == s {
+			return true
+		}
+	}
+	return false
+}
+
