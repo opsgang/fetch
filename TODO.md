@@ -1,5 +1,25 @@
 # TODO
 
+## http retry on 5xx
+* on all http calls with back-off
+
+## pagination
+* on all api calls
+
+## mocking of api calls
+
+## better tests
+* for large tag sets
+* for repo with no tags
+* for repo with no releases
+* for releases with out all assets requested
+
+## refactoring
+
+* reduce cyclomatic complexity
+* remove unneeded api calls by keeping the release asset info, not just the tag name.
+* exported to unexported
+
 ## --tag-prefix (filter)
 
 Account for only fetching tags that have a prefix with an optional delimiter
