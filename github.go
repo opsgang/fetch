@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"strconv"
+	"time"
 )
 
 type GitHubRepo struct {
@@ -73,6 +75,10 @@ type GitHubReleaseAsset struct {
 	Id   int    // asset id (not release id)
 	Url  string // url to retrieve asset
 	Name string // asset name
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 /*
@@ -143,8 +149,6 @@ func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 				continue
 			}
 
-			// ... compare rel.Name
-			fmt.Printf("... adding %s for consideration\n",rel.Tag_name)
 			tagsString = append(tagsString, rel.Tag_name)
 		}
 	}
@@ -256,9 +260,11 @@ func createGitHubRepoUrlForPath(repo GitHubRepo, path string) string {
 /*
 callGitHubApi ():
 Call the GitHub API, return HTTP response, and next page number if any
-TODO: add retry with exponential backoff
 */
 func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
+
+	var resp *http.Response
+
 	url := fmt.Sprintf("https://api.github.com/%s?per_page=100&page=%s", path, page)
 
 	next := "" // next page of results if any, assume none
@@ -276,10 +282,27 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 		request.Header.Set(headerName, headerValue)
 	}
 
-	resp, err := cl.Do(request)
+	attempt := 1
+	sleep := time.Second
+	for attempt <= 3 {
+		resp, err = cl.Do(request)
+		if resp != nil && resp.StatusCode < 500 {
+			break // success or an http client err (retry pointless)
+		}
+
+		attempt++
+		jitter := time.Duration(rand.Int63n(int64(sleep)))
+		time.Sleep(sleep + jitter/2)
+		sleep = sleep * 2
+
+		if attempt <3 {
+			fmt.Printf("Remote failure. Will retry call to %s\n", url)
+		}
+	}
 	if err != nil {
 		return nil, "", err
 	}
+
 	if resp.StatusCode != 200 {
 		// Convert the resp.Body to a string
 		buf := new(bytes.Buffer)
