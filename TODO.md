@@ -11,13 +11,13 @@
 ## refactoring
 
 * reduce cyclomatic complexity
-* remove unneeded api calls by keeping the release asset info, not just the tag name.
+* remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
 * exported to unexported
 
 ## --tag-prefix (filter)
 
 Account for only fetching tags that have a prefix with an optional delimiter
-before x.y.z (can be a \., \- or \_)
+before x.y.z (can be a \., \- or \_, or no delimiter)
 
 ## --which-tag
 
@@ -45,6 +45,12 @@ to me again.
 Still need to rename all vars, methods that use Fetch to use something else.
 
 # DONE
+
+## http transport settings
+
+* keep-alive
+* connection timeouts
+* idle timeouts
 
 ## http retry on 5xx
 * on all http calls with back-off

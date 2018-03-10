@@ -23,7 +23,7 @@ type GitHubRepo struct {
 
 // TODO: Client Should have keep-alives and timeouts set.
 // cl : our single instance of http.Client to be reused throughout.
-var cl http.Client
+var cl *http.Client
 
 type headers map[string]string
 
@@ -79,6 +79,13 @@ type GitHubReleaseAsset struct {
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+
+	cl = &http.Client{
+		Timeout: time.Second * 10,
+		Transport: http.DefaultTransport,
+	}
+	fmt.Printf("%#v", cl)
+
 }
 
 /*
@@ -257,6 +264,29 @@ func createGitHubRepoUrlForPath(repo GitHubRepo, path string) string {
 	return fmt.Sprintf("repos/%s/%s/%s", repo.Owner, repo.Name, path)
 }
 
+func retryReq(request *http.Request, url string) (resp *http.Response, err error) {
+
+	attempt := 1
+	sleep := time.Second
+	for attempt <= 3 {
+		resp, err = cl.Do(request)
+		if resp != nil && resp.StatusCode < 500 {
+			break // success or client err so retry unnecessary
+		}
+
+		attempt++
+		jitter := time.Duration(rand.Int63n(int64(sleep)))
+		time.Sleep(sleep + jitter/2)
+		sleep = sleep * 2
+
+		if attempt <3 {
+			fmt.Printf("Remote failure. Will retry call to %s\n", url)
+		}
+	}
+
+	return
+}
+
 /*
 callGitHubApi ():
 Call the GitHub API, return HTTP response, and next page number if any
@@ -282,23 +312,7 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 		request.Header.Set(headerName, headerValue)
 	}
 
-	attempt := 1
-	sleep := time.Second
-	for attempt <= 3 {
-		resp, err = cl.Do(request)
-		if resp != nil && resp.StatusCode < 500 {
-			break // success or an http client err (retry pointless)
-		}
-
-		attempt++
-		jitter := time.Duration(rand.Int63n(int64(sleep)))
-		time.Sleep(sleep + jitter/2)
-		sleep = sleep * 2
-
-		if attempt <3 {
-			fmt.Printf("Remote failure. Will retry call to %s\n", url)
-		}
-	}
+	resp, err = retryReq(request, url)
 	if err != nil {
 		return nil, "", err
 	}
