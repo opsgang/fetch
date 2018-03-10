@@ -84,8 +84,6 @@ func init() {
 		Timeout: time.Second * 10,
 		Transport: http.DefaultTransport,
 	}
-	fmt.Printf("%#v", cl)
-
 }
 
 /*

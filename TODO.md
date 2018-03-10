@@ -1,26 +1,15 @@
 # TODO
 
-## mocking of api calls
-
-## better tests
-* for large tag sets
-* for repo with no tags
-* for repo with no releases
-* for releases with out all assets requested
-
 ## refactoring
-
 * reduce cyclomatic complexity
 * remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
 * exported to unexported
 
 ## --tag-prefix (filter)
-
 Account for only fetching tags that have a prefix with an optional delimiter
 before x.y.z (can be a \., \- or \_, or no delimiter)
 
 ## --which-tag
-
 FetchTags returns the latest tag or else the one that meets a constraint.
 
 Offer `--which-tag`, which will only display a tag that would have been
@@ -33,7 +22,15 @@ downloaded.
 
 # IN PROGRESS
 
-## rename to ghget (it's shorter)
+## mocking of api calls
+
+## better tests
+* for large tag sets
+* for repo with no tags
+* for repo with no releases
+* for releases with out all assets requested
+
+## rename to ghget | glget | bbget (it's shorter)
 
 _fetch_ is far too overreaching a name - it only works with the github api, much to
 the exasperation of my bitbucket-using-colleagues.
