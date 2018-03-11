@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,6 +19,7 @@ type GitHubRepo struct {
 	Owner string // The GitHub account name under which the repo exists
 	Name  string // The GitHub repo name
 	Token string // The personal access token to access this repo (if it's a private repo)
+	Api   string // https://api.github.com (or stub server - see github_test.go)
 }
 
 // TODO: Client Should have keep-alives and timeouts set.
@@ -27,13 +28,11 @@ var cl *http.Client
 
 type headers map[string]string
 
-/*
-Hierarchy:
-* commitSha > branch > GitTag
-* Example: GitTag and branch are both specified; use the GitTag
-* Example: GitTag and commitSha are both specified; use the commitSha
-* Example: branch alone is specified; use branch
-*/
+// Hierarchy:
+// * commitSha > branch > GitTag
+// * Example: GitTag and branch are both specified; use the GitTag
+// * Example: GitTag and commitSha are both specified; use the commitSha
+// * Example: branch alone is specified; use branch
 
 // GitHubCommit {}:
 // A specific git commit.
@@ -55,7 +54,7 @@ type GitHubTagsApiResponse struct {
 // GitHubTagsCommitApiResponse {}:
 type GitHubTagsCommitApiResponse struct {
 	Sha string // The SHA of the commit associated with a given tag
-	Url string // The URL to get more commit info 
+	Url string // The URL to get more commit info
 }
 
 // GitHubReleaseApiResponse {}:
@@ -81,18 +80,16 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 
 	cl = &http.Client{
-		Timeout: time.Second * 10,
+		Timeout:   time.Second * 120,
 		Transport: http.DefaultTransport,
 	}
 }
 
-/*
-fetchReleaseTags ():
-returns a list of tags to releases that are:
-i) published
-ii) contain the desired --release-assets
-iii) starts with --tag-prefix if specified
-*/
+// fetchReleaseTags ():
+// returns a list of tags to releases that are:
+// i) published
+// ii) contain the desired --release-assets
+// iii) starts with --tag-prefix if specified
 func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 	var tagsString []string
 
@@ -103,7 +100,7 @@ func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 
 	// TODO - abstract and iterate over pages using header data
 	url := createGitHubRepoUrlForPath(repo, "releases")
-	resps, err := repo.callGitHubApi(url, map[string]string{})
+	resps, err := repo.callGitHubApi(url, headers{})
 	if err != nil {
 		return tagsString, err
 	}
@@ -120,7 +117,6 @@ func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 		if err := json.Unmarshal(jsonResp, &rels); err != nil {
 			return tagsString, err
 		}
-
 
 		for _, rel := range rels {
 			// ... skip if prerelease
@@ -174,7 +170,7 @@ func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 	}
 
 	url := createGitHubRepoUrlForPath(repo, "tags")
-	resps, err := repo.callGitHubApi(url, map[string]string{})
+	resps, err := repo.callGitHubApi(url, headers{})
 	if err != nil {
 		return tagsString, err
 	}
@@ -218,6 +214,7 @@ func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, error) {
 		Owner: matches[1],
 		Name:  matches[2],
 		Token: token,
+		Api:   "https://api.github.com",
 	}
 
 	return gitHubRepo, nil
@@ -229,7 +226,7 @@ func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) error {
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/assets/%d", assetId))
 
 	// ... don't need to use callGitHubApi as that only wraps for pagination.
-	resp, _, err := repo.apiResp(url, "", map[string]string{"Accept": "application/octet-stream"})
+	resp, _, err := repo.apiResp(url, "", headers{"Accept": "application/octet-stream"})
 	if err != nil {
 		return err
 	}
@@ -242,7 +239,7 @@ func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse
 	release := GitHubReleaseApiResponse{}
 
 	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/tags/%s", tag))
-	resp, _, err := repo.apiResp(url, "", map[string]string{})
+	resp, _, err := repo.apiResp(url, "", headers{})
 	if err != nil {
 		return release, err
 	}
@@ -272,28 +269,27 @@ func retryReq(request *http.Request, url string) (resp *http.Response, err error
 			break // success or client err so retry unnecessary
 		}
 
+		if attempt < 3 {
+			fmt.Printf("Remote failure. Will retry call to %s\n", url)
+		}
+
 		attempt++
 		jitter := time.Duration(rand.Int63n(int64(sleep)))
 		time.Sleep(sleep + jitter/2)
 		sleep = sleep * 2
 
-		if attempt <3 {
-			fmt.Printf("Remote failure. Will retry call to %s\n", url)
-		}
 	}
 
 	return
 }
 
-/*
-callGitHubApi ():
-Call the GitHub API, return HTTP response, and next page number if any
-*/
+// callGitHubApi ():
+// Call the GitHub API, return HTTP response, and next page number if any
 func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
 
 	var resp *http.Response
 
-	url := fmt.Sprintf("https://api.github.com/%s?per_page=100&page=%s", path, page)
+	url := fmt.Sprintf("%s/%s?per_page=100&page=%s", r.Api, path, page)
 
 	next := "" // next page of results if any, assume none
 
@@ -345,7 +341,7 @@ func (r GitHubRepo) callGitHubApi(path string, h headers) ([]*http.Response, err
 
 	for page != "" {
 		resp, n, err := r.apiResp(path, page, h)
-		if err !=nil {
+		if err != nil {
 			return resps, err
 		}
 		page = n
@@ -397,7 +393,7 @@ in the env before invoking fetch.
 http response:
 %s
 `
-	case status >= 500 && status  < 600:
+	case status >= 500 && status < 600:
 		tmpl = `
 Received HTTP response %d from GitHub. Is it down?
 url: %s
@@ -417,4 +413,3 @@ http response:
 
 	return fmt.Errorf(tmpl, status, url, body)
 }
-

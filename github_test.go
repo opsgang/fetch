@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
@@ -121,12 +124,12 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 	}
 
 	expectedFetchTestPublicRelease := GitHubReleaseApiResponse{
-		Id:     8471364,
-		Url:    "https://api.github.com/repos/opsgang/fetch/releases/8471364",
-		Name:   "static binary for amd64 linux",
+		Id:         8471364,
+		Url:        "https://api.github.com/repos/opsgang/fetch/releases/8471364",
+		Name:       "static binary for amd64 linux",
 		Prerelease: false,
-		Tag_name: "v0.1.1",
-		Assets: append([]GitHubReleaseAsset{}, expectedReleaseAsset),
+		Tag_name:   "v0.1.1",
+		Assets:     append([]GitHubReleaseAsset{}, expectedReleaseAsset),
 	}
 
 	cases := []struct {
@@ -190,6 +193,93 @@ func TestFetchReleaseAsset(t *testing.T) {
 			t.Fatalf("Got no errors downloading asset %d to %s from GitHub URL %s, but %s does not exist!", tc.assetId, tmpFile.Name(), tc.repoUrl, tmpFile.Name())
 		}
 	}
+}
+
+func TestApiResp(t *testing.T) {
+	t.Parallel()
+
+	s := apiStub()
+	defer s.Close()
+
+	r := GitHubRepo{
+		Url:   "https://github.com/foo/bar",
+		Owner: "foo",
+		Name:  "bar",
+		Token: "dummytoken",
+		Api:   s.URL,
+	}
+
+	resp, next, err := r.apiResp("foo/bar/tags", "1", headers{})
+
+	if err != nil {
+		fmt.Printf("response:%#v\nnext:%s\nerr:%#v\n", resp, next, err)
+	}
+
+}
+
+func TestRetryReq(t *testing.T) {
+	t.Parallel()
+
+	s := apiStub()
+	defer s.Close()
+
+	failTwice := fmt.Sprintf("%s/fail/twice", s.URL)
+	request, err := http.NewRequest("GET", failTwice, nil)
+	resp, err = retryReq(request, failTwice)
+	if err != nil {
+		fmt.Printf("response:%#v\nerr:%#v\n", resp, next, err)
+	}
+
+	failAlways := fmt.Sprintf("%s/fail/always", s.URL)
+	request, err = http.NewRequest("GET", failAlways, nil)
+	resp, err = retryReq(request, failAlways)
+	if err != nil {
+		fmt.Printf("response:%#v\nerr:%#v\n", resp, err)
+	}
+}
+
+func apiStub() *httptest.Server {
+	var resp string
+	var counter = 0 // used for keeping track of retries
+
+	return httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+
+				if v, ok := r.Header["Authorization"]; ok {
+					w.Header().Set("X-Authorization", v[0])
+				}
+				switch r.RequestURI {
+
+				case "/foo/bar/tags?per_page=100&page=1":
+					w.Header().Set("Link", "blah ; rel=\"next\" ; boo")
+					resp = `{"foo": "bar"}`
+
+				case "/foo/bar/tags?per_page=100&page=2":
+					w.Header().Set("Link", "blah ; rel=\"last\" ; boo")
+					resp = `{"foo": "bar"}`
+
+				case "/fail/twice":
+					if counter == 2 {
+						resp = `{"all": "good"}`
+					} else {
+						counter++
+						http.Error(w, "Remote failure", http.StatusBadGateway)
+						return
+					}
+
+				case "/fail/always":
+					http.Error(w, "Remote failure", http.StatusInternalServerError)
+					return
+
+				default:
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				w.Write([]byte(resp))
+			},
+		),
+	)
 }
 
 func fileExists(path string) bool {

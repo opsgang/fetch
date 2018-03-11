@@ -213,7 +213,7 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optReleaseAsset, optTag)
 	}
 
-	if len(o.ReleaseAssets) > 0 && len(o.fromPaths) >0 {
+	if len(o.ReleaseAssets) > 0 && len(o.fromPaths) > 0 {
 		return fmt.Errorf("Specify only --%s or --%s, not both.", optReleaseAsset, optFromPath)
 	}
 
@@ -400,4 +400,3 @@ func stringInSlice(s string, slice []string) bool {
 	}
 	return false
 }
-

@@ -85,7 +85,7 @@ func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error)
 	}
 
 	// check constraint against latest acceptable version
-	if ! constraints.Check(latestAcceptableVersion) {
+	if !constraints.Check(latestAcceptableVersion) {
 		return latestTag, fmt.Errorf("No tag met constraint.\n")
 	}
 
