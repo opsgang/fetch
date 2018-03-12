@@ -52,7 +52,7 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 	}
 }
 
-func TesturlToGitHubRepo(t *testing.T) {
+func TestUrlToGitHubRepo(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -267,7 +267,7 @@ func TestRetryReq(t *testing.T) {
 	request, err = http.NewRequest("GET", failAlways, nil)
 	resp, err = retryReq(request, failAlways)
 	if err != nil || resp.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("/fail/always should have failed with resp code %s", http.StatusInternalServerError)
+		t.Fatalf("/fail/always should have failed with resp code %d", http.StatusInternalServerError)
 	}
 }
 
