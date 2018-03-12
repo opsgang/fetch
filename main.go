@@ -130,13 +130,18 @@ func runFetch(c *cli.Context) (err error) {
 		fmt.Println("WARNING: no github token provided - will be severely rate-limited by GitHub API")
 	}
 
+	// Prepare the vars we'll need to download
+	r, err := urlToGitHubRepo(o.repoUrl, o.githubToken)
+	if err != nil {
+		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
+	}
 	// Get the tags for the given repo
 	// or tags for actual releases if getting release assets.
 	var tags []string
 	if len(o.ReleaseAssets) == 0 {
-		tags, err = FetchTags(o.repoUrl, o.githubToken)
+		tags, err = FetchTags(r)
 	} else {
-		tags, err = o.fetchReleaseTags()
+		tags, err = o.fetchReleaseTags(r)
 	}
 	if err != nil {
 		return fmt.Errorf("Error occurred while getting tags from GitHub repo: %s", err)
@@ -154,12 +159,6 @@ func runFetch(c *cli.Context) (err error) {
 		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.tagConstraint, desiredTag)
 	}
 
-	// Prepare the vars we'll need to download
-	repo, err := ParseUrlIntoGitHubRepo(o.repoUrl, o.githubToken)
-	if err != nil {
-		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
-	}
-
 	// If no release assets or from-paths specified, assume
 	// user wants all files from zipball.
 	if len(o.fromPaths) == 0 && len(o.ReleaseAssets) == 0 {
@@ -167,12 +166,12 @@ func runFetch(c *cli.Context) (err error) {
 	}
 
 	// Download any requested source files
-	if err := o.downloadFromPaths(repo, desiredTag); err != nil {
+	if err := o.downloadFromPaths(r, desiredTag); err != nil {
 		return err
 	}
 
 	// Download any requested release assets
-	if err := o.downloadReleaseAssets(repo, desiredTag); err != nil {
+	if err := o.downloadReleaseAssets(r, desiredTag); err != nil {
 		return err
 	}
 

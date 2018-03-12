@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,7 +28,8 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		releases, err := FetchTags(tc.repoUrl, tc.gitHubOAuthToken)
+		r, err := urlToGitHubRepo(tc.repoUrl, tc.gitHubOAuthToken)
+		releases, err := FetchTags(r)
 		if err != nil {
 			t.Fatalf("error fetching releases: %s", err)
 		}
@@ -50,7 +52,7 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 	}
 }
 
-func TestParseUrlIntoGitHubRepo(t *testing.T) {
+func TesturlToGitHubRepo(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -70,7 +72,7 @@ func TestParseUrlIntoGitHubRepo(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		repo, err := ParseUrlIntoGitHubRepo(tc.repoUrl, tc.token)
+		repo, err := urlToGitHubRepo(tc.repoUrl, tc.token)
 		if err != nil {
 			t.Fatalf("error extracting url %s into a GitHubRepo struct: %s", tc.repoUrl, err)
 		}
@@ -105,7 +107,7 @@ func TestParseUrlThrowsErrorOnMalformedUrl(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		_, err := ParseUrlIntoGitHubRepo(tc.repoUrl, "")
+		_, err := urlToGitHubRepo(tc.repoUrl, "")
 		if err == nil {
 			t.Fatalf("Expected error on malformed url %s, but no error was received.", tc.repoUrl)
 		}
@@ -142,7 +144,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		repo, err := ParseUrlIntoGitHubRepo(tc.repoUrl, tc.repoToken)
+		repo, err := urlToGitHubRepo(tc.repoUrl, tc.repoToken)
 		if err != nil {
 			t.Fatalf("Failed to parse %s into GitHub URL due to error: %s", tc.repoUrl, err.Error())
 		}
@@ -173,7 +175,7 @@ func TestFetchReleaseAsset(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		repo, err := ParseUrlIntoGitHubRepo(tc.repoUrl, tc.repoToken)
+		repo, err := urlToGitHubRepo(tc.repoUrl, tc.repoToken)
 		if err != nil {
 			t.Fatalf("Failed to parse %s into GitHub URL due to error: %s", tc.repoUrl, err.Error())
 		}
@@ -209,10 +211,32 @@ func TestApiResp(t *testing.T) {
 		Api:   s.URL,
 	}
 
+	// ... check we get next page back
 	resp, next, err := r.apiResp("foo/bar/tags", "1", headers{})
 
 	if err != nil {
-		fmt.Printf("response:%#v\nnext:%s\nerr:%#v\n", resp, next, err)
+		t.Fatalf("did not expect error when calling /foo/bar/tags, page 1")
+	}
+	if next != "2" {
+		t.Fatalf("expected 2nd page of results from Link response header")
+	}
+
+	// ... check auth header correct format
+	if v, ok := resp.Header["X-Authorization"]; !ok {
+		t.Fatalf("auth header should have been copied back in response for test")
+	} else {
+		if v[0] != "token dummytoken" {
+			t.Fatalf("auth header should have value 'token dummytoken', not '%s'", v[0])
+		}
+	}
+
+	// ... check no further pages after last
+	_, next, err = r.apiResp("foo/bar/tags", "2", headers{})
+	if err != nil {
+		t.Fatalf("did not expect error when calling /foo/bar/tags, page 1")
+	}
+	if next != "" {
+		t.Fatalf("expected no more results from Link response header")
 	}
 
 }
@@ -223,18 +247,27 @@ func TestRetryReq(t *testing.T) {
 	s := apiStub()
 	defer s.Close()
 
+	// ... test we are retrying (check the test counter)
 	failTwice := fmt.Sprintf("%s/fail/twice", s.URL)
 	request, err := http.NewRequest("GET", failTwice, nil)
-	resp, err = retryReq(request, failTwice)
+	resp, err := retryReq(request, failTwice)
 	if err != nil {
-		fmt.Printf("response:%#v\nerr:%#v\n", resp, next, err)
+		t.Fatalf("/fail/twice should not err , not %s", err)
+	} else {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		respBody := buf.String()
+		if respBody != "counter: 2" {
+			t.Fatalf("/fail/twice should succeed when counter is 2, got %s", respBody)
+		}
 	}
 
+	// ... after retries exceeded, should fail.
 	failAlways := fmt.Sprintf("%s/fail/always", s.URL)
 	request, err = http.NewRequest("GET", failAlways, nil)
 	resp, err = retryReq(request, failAlways)
-	if err != nil {
-		fmt.Printf("response:%#v\nerr:%#v\n", resp, err)
+	if err != nil || resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("/fail/always should have failed with resp code %s", http.StatusInternalServerError)
 	}
 }
 
@@ -252,16 +285,16 @@ func apiStub() *httptest.Server {
 				switch r.RequestURI {
 
 				case "/foo/bar/tags?per_page=100&page=1":
-					w.Header().Set("Link", "blah ; rel=\"next\" ; boo")
-					resp = `{"foo": "bar"}`
+					w.Header().Set("Link", apiTagsPage1Link)
+					resp = apiTagsPage1
 
 				case "/foo/bar/tags?per_page=100&page=2":
-					w.Header().Set("Link", "blah ; rel=\"last\" ; boo")
-					resp = `{"foo": "bar"}`
+					w.Header().Set("Link", apiTagsPage2Link)
+					resp = apiTagsPage2
 
 				case "/fail/twice":
 					if counter == 2 {
-						resp = `{"all": "good"}`
+						resp = fmt.Sprintf("counter: %d", counter)
 					} else {
 						counter++
 						http.Error(w, "Remote failure", http.StatusBadGateway)

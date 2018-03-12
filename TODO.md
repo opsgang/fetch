@@ -5,6 +5,10 @@
 * remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
 * exported to unexported
 
+## --timeout i
+
+Let user specify net/http timeout (for those larger repos and assets)
+
 ## --tag-prefix (filter)
 Account for only fetching tags that have a prefix with an optional delimiter
 before x.y.z (can be a \., \- or \_, or no delimiter)

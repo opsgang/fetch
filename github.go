@@ -22,7 +22,6 @@ type GitHubRepo struct {
 	Api   string // https://api.github.com (or stub server - see github_test.go)
 }
 
-// TODO: Client Should have keep-alives and timeouts set.
 // cl : our single instance of http.Client to be reused throughout.
 var cl *http.Client
 
@@ -90,15 +89,8 @@ func init() {
 // i) published
 // ii) contain the desired --release-assets
 // iii) starts with --tag-prefix if specified
-func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
-	var tagsString []string
+func (o *fetchOpts) fetchReleaseTags(repo GitHubRepo) (tagsString []string, err error) {
 
-	repo, err := ParseUrlIntoGitHubRepo(o.repoUrl, o.githubToken)
-	if err != nil {
-		return tagsString, err
-	}
-
-	// TODO - abstract and iterate over pages using header data
 	url := createGitHubRepoUrlForPath(repo, "releases")
 	resps, err := repo.callGitHubApi(url, headers{})
 	if err != nil {
@@ -135,18 +127,18 @@ func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 				relAssetsList = append(relAssetsList, a.Name)
 			}
 			// ... skip if desired asset not in list of attached assets
-			var missing_asset bool
+			var missingAsset bool
 			for _, a := range o.ReleaseAssets {
 				if stringInSlice(a, relAssetsList) {
 					continue
 				} else {
 					fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
-					missing_asset = true
+					missingAsset = true
 					break
 				}
 			}
 
-			if missing_asset {
+			if missingAsset {
 				continue
 			}
 
@@ -161,16 +153,11 @@ func (o *fetchOpts) fetchReleaseTags() ([]string, error) {
 }
 
 // Fetch all tags from the given GitHub repo
-func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
+func FetchTags(r GitHubRepo) ([]string, error) {
 	var tagsString []string
 
-	repo, err := ParseUrlIntoGitHubRepo(githubRepoUrl, githubToken)
-	if err != nil {
-		return tagsString, err
-	}
-
-	url := createGitHubRepoUrlForPath(repo, "tags")
-	resps, err := repo.callGitHubApi(url, headers{})
+	url := createGitHubRepoUrlForPath(r, "tags")
+	resps, err := r.callGitHubApi(url, headers{})
 	if err != nil {
 		return tagsString, err
 	}
@@ -196,7 +183,7 @@ func FetchTags(githubRepoUrl string, githubToken string) ([]string, error) {
 }
 
 // Convert a URL into a GitHubRepo struct
-func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, error) {
+func urlToGitHubRepo(url string, token string) (GitHubRepo, error) {
 	var gitHubRepo GitHubRepo
 
 	regex, regexErr := regexp.Compile("https?://(?:www\\.)?github.com/(.+?)/(.+?)(?:$|\\?|#|/)")
@@ -221,12 +208,12 @@ func ParseUrlIntoGitHubRepo(url string, token string) (GitHubRepo, error) {
 }
 
 // Download the release asset with the given id and return its body
-func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) error {
+func FetchReleaseAsset(r GitHubRepo, assetId int, destPath string) error {
 
-	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/assets/%d", assetId))
+	url := createGitHubRepoUrlForPath(r, fmt.Sprintf("releases/assets/%d", assetId))
 
 	// ... don't need to use callGitHubApi as that only wraps for pagination.
-	resp, _, err := repo.apiResp(url, "", headers{"Accept": "application/octet-stream"})
+	resp, _, err := r.apiResp(url, "", headers{"Accept": "application/octet-stream"})
 	if err != nil {
 		return err
 	}
@@ -235,11 +222,11 @@ func FetchReleaseAsset(repo GitHubRepo, assetId int, destPath string) error {
 }
 
 // Get information about the GitHub release with the given tag
-func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse, error) {
+func GetGitHubReleaseInfo(r GitHubRepo, tag string) (GitHubReleaseApiResponse, error) {
 	release := GitHubReleaseApiResponse{}
 
-	url := createGitHubRepoUrlForPath(repo, fmt.Sprintf("releases/tags/%s", tag))
-	resp, _, err := repo.apiResp(url, "", headers{})
+	url := createGitHubRepoUrlForPath(r, fmt.Sprintf("releases/tags/%s", tag))
+	resp, _, err := r.apiResp(url, "", headers{})
 	if err != nil {
 		return release, err
 	}
@@ -255,8 +242,8 @@ func GetGitHubReleaseInfo(repo GitHubRepo, tag string) (GitHubReleaseApiResponse
 }
 
 // Craft a URL for the GitHub repos API of the form repos/:owner/:repo/:path
-func createGitHubRepoUrlForPath(repo GitHubRepo, path string) string {
-	return fmt.Sprintf("repos/%s/%s/%s", repo.Owner, repo.Name, path)
+func createGitHubRepoUrlForPath(r GitHubRepo, path string) string {
+	return fmt.Sprintf("repos/%s/%s/%s", r.Owner, r.Name, path)
 }
 
 func retryReq(request *http.Request, url string) (resp *http.Response, err error) {
@@ -283,8 +270,6 @@ func retryReq(request *http.Request, url string) (resp *http.Response, err error
 	return
 }
 
-// callGitHubApi ():
-// Call the GitHub API, return HTTP response, and next page number if any
 func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
 
 	var resp *http.Response
@@ -307,7 +292,7 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 	}
 
 	resp, err = retryReq(request, url)
-	if err != nil {
+	if err != nil { // not checking resp code, only whether http transport succeeded
 		return nil, "", err
 	}
 
@@ -334,9 +319,9 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 	return resp, next, err
 }
 
-func (r GitHubRepo) callGitHubApi(path string, h headers) ([]*http.Response, error) {
-	var resps []*http.Response
-	var err error
+// callGitHubApi ():
+// Call the GitHub API, return HTTP response, and next page number if any
+func (r GitHubRepo) callGitHubApi(path string, h headers) (resps []*http.Response, err error) {
 	page := "1"
 
 	for page != "" {
@@ -348,21 +333,21 @@ func (r GitHubRepo) callGitHubApi(path string, h headers) ([]*http.Response, err
 		resps = append(resps, resp)
 	}
 
-	return resps, err
+	return
 }
 
 // Write the body of the given HTTP response to disk at the given path
-func writeResponseToDisk(resp *http.Response, destPath string) error {
+func writeResponseToDisk(resp *http.Response, destPath string) (err error) {
 	out, err := os.Create(destPath)
 	if err != nil {
-		return err
+		return
 	}
 
 	defer out.Close()
 	defer resp.Body.Close()
 
 	_, err = io.Copy(out, resp.Body)
-	return err
+	return
 }
 
 // ghApiErr : returns a valid `error` obj
