@@ -962,3 +962,163 @@ const apiTagsPage2 = `
 const apiTagsPage2Link = `
 <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="first"
 `
+
+const relsPage1 = `
+[
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/9876543",
+    "id": 9876543,
+    "tag_name": "9.8.7",
+    "name": "prerelease",
+    "prerelease": true,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/9854782",
+        "id": 9854782,
+        "name": "foo.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/9854783",
+        "id": 9854783,
+        "name": "bar.tgz"
+      }
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/8765432",
+    "id": 8765432,
+    "tag_name": "bad8.7.6.5",
+    "name": "bad tag",
+    "prerelease": false,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/8754782",
+        "id": 8754782,
+        "name": "foo.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/8754783",
+        "id": 8754783,
+        "name": "bar.tgz"
+      }
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/7654321",
+    "id": 7654321,
+    "tag_name": "7.6.5",
+    "name": "all good",
+    "prerelease": false,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7654782",
+        "id": 7654782,
+        "name": "foo.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7654783",
+        "id": 7654783,
+        "name": "bar.tgz"
+      }
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/6556789",
+    "id": 6556789,
+    "tag_name": "6.5.5",
+    "name": "missing asset",
+    "prerelease": false,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/6554782",
+        "id": 6554782,
+        "name": "foo.tgz"
+      }
+    ]
+  }
+]
+`
+
+const relsPage2 = `
+[
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/1234567",
+    "id": 1234567,
+    "tag_name": "v1.2.3",
+    "name": "prerelease",
+    "prerelease": true,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/5354782",
+        "id": 5354782,
+        "name": "foo.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/5354783",
+        "id": 5354783,
+        "name": "bar.tgz"
+      }
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/2345678",
+    "id": 2345678,
+    "tag_name": "bad2.3.4.0",
+    "name": "bad tag",
+    "prerelease": false,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/6354782",
+        "id": 6354782,
+        "name": "foo.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/6354783",
+        "id": 6354783,
+        "name": "bar.tgz"
+      }
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/3456789",
+    "id": 3456789,
+    "tag_name": "3.4.5",
+    "name": "all good",
+    "prerelease": false,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7354782",
+        "id": 7354782,
+        "name": "foo.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7354783",
+        "id": 7354783,
+        "name": "bar.tgz"
+      }
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/foo/bar/g/releases/4556789",
+    "id": 4556789,
+    "tag_name": "4.5.6",
+    "name": "missing asset",
+    "prerelease": false,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/8354782",
+        "id": 8354782,
+        "name": "foo.tgz"
+      }
+    ]
+  }
+]
+`
+
+const relsPage1Link = `
+<https://api.github.com/repositories/12345678/tags?per_page=100&page=2>; rel="next", <https://api.github.com/repositories/12345678/tags?per_page=100&page=2>; rel="last"
+`
+
+const relsPage2Link = `
+<https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="first"
+`

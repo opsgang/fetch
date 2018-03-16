@@ -89,12 +89,12 @@ func init() {
 // i) published
 // ii) contain the desired --release-assets
 // iii) starts with --tag-prefix if specified
-func (o *fetchOpts) fetchReleaseTags(repo GitHubRepo) (tagsString []string, err error) {
+func (o *fetchOpts) fetchReleaseTags(r GitHubRepo) (tagsForValidRels []string, err error) {
 
-	url := createGitHubRepoUrlForPath(repo, "releases")
-	resps, err := repo.callGitHubApi(url, headers{})
+	url := createGitHubRepoUrlForPath(r, "releases")
+	resps, err := r.callGitHubApi(url, headers{})
 	if err != nil {
-		return tagsString, err
+		return tagsForValidRels, err
 	}
 
 	// Convert the response body to a byte array
@@ -107,59 +107,74 @@ func (o *fetchOpts) fetchReleaseTags(repo GitHubRepo) (tagsString []string, err 
 		// Extract the JSON into our array of gitHubTagsCommitApiResponse's
 		var rels []GitHubReleaseApiResponse
 		if err := json.Unmarshal(jsonResp, &rels); err != nil {
-			return tagsString, err
+			return tagsForValidRels, err
 		}
 
-		for _, rel := range rels {
-			// ... skip if prerelease
-			if rel.Prerelease {
-				fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
-				continue
-			}
-			// ... skip if release contains fewer assets than number requested
-			if len(rel.Assets) < len(o.ReleaseAssets) {
-				fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
-				continue
-			}
+		tags := o.filterTags(rels)
 
-			var relAssetsList []string
-			for _, a := range rel.Assets {
-				relAssetsList = append(relAssetsList, a.Name)
-			}
-			// ... skip if desired asset not in list of attached assets
-			var missingAsset bool
-			for _, a := range o.ReleaseAssets {
-				if stringInSlice(a, relAssetsList) {
-					continue
-				} else {
-					fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
-					missingAsset = true
-					break
-				}
-			}
-
-			if missingAsset {
-				continue
-			}
-
-			tagsString = append(tagsString, rel.Tag_name)
+		if len(tags) != 0 {
+			tagsForValidRels = append(tagsForValidRels, tags...)
 		}
+
 	}
 
-	if len(tagsString) == 0 {
-		return tagsString, fmt.Errorf("No single release found with all requested assets")
+	if len(tagsForValidRels) == 0 {
+		return tagsForValidRels, fmt.Errorf("No single release found with all requested assets")
 	}
-	return tagsString, nil
+
+	return
+}
+
+// filterTags ():
+// ... fetchOpts only used for slice of release assets
+func (o *fetchOpts) filterTags(rels []GitHubReleaseApiResponse) (tags []string) {
+
+	for _, rel := range rels {
+		// ... skip if prerelease
+		if rel.Prerelease {
+			fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
+			continue
+		}
+		// ... skip if release contains fewer assets than number requested
+		if len(rel.Assets) < len(o.ReleaseAssets) {
+			fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
+			continue
+		}
+
+		var relAssetsList []string
+		for _, a := range rel.Assets {
+			relAssetsList = append(relAssetsList, a.Name)
+		}
+		// ... skip if desired asset not in list of attached assets
+		var missingAsset bool
+		for _, a := range o.ReleaseAssets {
+			if stringInSlice(a, relAssetsList) {
+				continue
+			} else {
+				fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
+				missingAsset = true
+				break
+			}
+		}
+
+		if missingAsset {
+			continue
+		}
+
+		tags = append(tags, rel.Tag_name)
+	}
+
+	return
 }
 
 // Fetch all tags from the given GitHub repo
 func FetchTags(r GitHubRepo) ([]string, error) {
-	var tagsString []string
+	var tags []string
 
 	url := createGitHubRepoUrlForPath(r, "tags")
 	resps, err := r.callGitHubApi(url, headers{})
 	if err != nil {
-		return tagsString, err
+		return tags, err
 	}
 
 	for _, resp := range resps {
@@ -169,17 +184,17 @@ func FetchTags(r GitHubRepo) ([]string, error) {
 		jsonResp := buf.Bytes()
 
 		// Extract the JSON into our array of gitHubTagsCommitApiResponse's
-		var tags []GitHubTagsApiResponse
-		if err := json.Unmarshal(jsonResp, &tags); err != nil {
-			return tagsString, err
+		var tagsResp []GitHubTagsApiResponse
+		if err := json.Unmarshal(jsonResp, &tagsResp); err != nil {
+			return tags, err
 		}
 
-		for _, tag := range tags {
-			tagsString = append(tagsString, tag.Name)
+		for _, tag := range tagsResp {
+			tags = append(tags, tag.Name)
 		}
 	}
 
-	return tagsString, nil
+	return tags, nil
 }
 
 // Convert a URL into a GitHubRepo struct
@@ -293,10 +308,12 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 
 	resp, err = retryReq(request, url)
 	if err != nil { // not checking resp code, only whether http transport succeeded
+		fmt.Println("Failed retryReq")
 		return nil, "", err
 	}
 
 	if resp.StatusCode != 200 {
+		fmt.Println("Got non-200")
 		// Convert the resp.Body to a string
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
@@ -315,6 +332,7 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 			}
 		}
 	}
+
 
 	return resp, next, err
 }

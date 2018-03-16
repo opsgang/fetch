@@ -11,7 +11,32 @@ import (
 	"testing"
 )
 
-func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
+func TestFetchReleaseTags(t *testing.T) {
+	t.Parallel()
+	s := apiStub()
+	defer s.Close()
+
+	r := GitHubRepo{
+		Url:   "https://github.com/foo/bar",
+		Owner: "foo",
+		Name:  "bar",
+		Token: "dummytoken",
+		Api:   s.URL,
+	}
+
+	var o fetchOpts
+	o.ReleaseAssets = []string{"foo.tgz","bar.tgz"}
+
+	// get the test results from the stub server
+	if tags, err := o.fetchReleaseTags(r) ; err != nil {
+		t.Fatalf("error fetching stub releases for foo/bar: err: %s", err )
+	} else if ! reflect.DeepEqual(tags,[]string{"bad8.7.6.5", "7.6.5", "bad2.3.4.0", "3.4.5"}) {
+			t.Fatalf("error fetching stub releases for foo/bar: got %#v", tags)
+	}
+
+}
+
+func TestFetchTags(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -29,27 +54,93 @@ func TestGetListOfReleasesFromGitHubRepo(t *testing.T) {
 
 	for _, tc := range cases {
 		r, err := urlToGitHubRepo(tc.repoUrl, tc.gitHubOAuthToken)
-		releases, err := FetchTags(r)
+		tags, err := FetchTags(r)
 		if err != nil {
-			t.Fatalf("error fetching releases: %s", err)
+			t.Fatalf("error fetching tags: %s", err)
 		}
 
-		if len(releases) != 0 && tc.firstReleaseTag == "" {
-			t.Fatalf("expected empty list of releases for repo %s, but got first release = %s", tc.repoUrl, releases[0])
+		if len(tags) != 0 && tc.firstReleaseTag == "" {
+			t.Fatalf("expected empty list of tags for repo %s, but got first tag = %s", tc.repoUrl, tags[0])
 		}
 
-		if len(releases) == 0 && tc.firstReleaseTag != "" {
-			t.Fatalf("expected non-empty list of releases for repo %s, but no releases were found", tc.repoUrl)
+		if len(tags) == 0 && tc.firstReleaseTag != "" {
+			t.Fatalf("expected non-empty list of tags for repo %s, but no tags were found", tc.repoUrl)
 		}
 
-		if releases[len(releases)-1] != tc.firstReleaseTag {
-			t.Fatalf("error parsing github releases for repo %s. expected first release = %s, actual = %s", tc.repoUrl, tc.firstReleaseTag, releases[len(releases)-1])
+		if tags[len(tags)-1] != tc.firstReleaseTag {
+			t.Fatalf("error parsing github tags for repo %s. expected first tag = %s, actual = %s", tc.repoUrl, tc.firstReleaseTag, tags[len(tags)-1])
 		}
 
-		if releases[0] != tc.lastReleaseTag {
-			t.Fatalf("error parsing github releases for repo %s. expected first release = %s, actual = %s", tc.repoUrl, tc.lastReleaseTag, releases[0])
+		if tags[0] != tc.lastReleaseTag {
+			t.Fatalf("error parsing github tags for repo %s. expected first tag = %s, actual = %s", tc.repoUrl, tc.lastReleaseTag, tags[0])
 		}
 	}
+}
+
+func TestFilterTags(t *testing.T) {
+	t.Parallel()
+
+	var o fetchOpts
+	o.ReleaseAssets = []string{"magic.rb", "wizardry.py", "sourcery.go"}
+
+	allAssets := []GitHubReleaseAsset {
+		{1, "irrelevant-for-this", "magic.rb"},
+		{2, "irrelevant-for-this", "wizardry.py"},
+		{3, "irrelevant-for-this", "sourcery.go"},
+	}
+
+	missingAsset := []GitHubReleaseAsset {
+		{1, "irrelevant-for-this", "magic.rb"},
+		{2, "irrelevant-for-this", "sourcery.go"},
+	}
+
+	wrongAsset := []GitHubReleaseAsset {
+		{1, "irrelevant-for-this", "magic.rb"},
+		{2, "irrelevant-for-this", "magic.c"},
+		{2, "irrelevant-for-this", "magic.h"},
+	}
+
+	respAllValid := []GitHubReleaseApiResponse {
+		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets },
+		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets },
+		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets },
+	}
+
+	respAllPrerelease := []GitHubReleaseApiResponse {
+		{1, "irrelevant-for-this", "MagicFoo1", true, "v1.0.0", allAssets },
+		{2, "irrelevant-for-this", "MagicFoo2", true, "v2.0.0", allAssets },
+		{3, "irrelevant-for-this", "MagicFoo3", true, "v3.0.0", allAssets },
+	}
+
+	respTooFewAssets := []GitHubReleaseApiResponse {
+		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets },
+		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", missingAsset },
+		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets },
+	}
+
+	respWrongAsset := []GitHubReleaseApiResponse {
+		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets },
+		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets},
+		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", wrongAsset},
+	}
+
+	cases := []struct {
+		resps  []GitHubReleaseApiResponse
+		result []string
+	} {
+		{respAllValid, []string{"v1.0.0","v2.0.0","v3.0.0"}},
+		{respAllPrerelease, nil},
+		{respTooFewAssets, []string{"v1.0.0","v3.0.0"}},
+		{respWrongAsset, []string{"v1.0.0","v2.0.0"}},
+	}
+
+	for _, tc := range cases {
+		tags := o.filterTags(tc.resps)
+		if ! reflect.DeepEqual(tags, tc.result) {
+			t.Fatalf("tags string did not match for %#v\n\tGot %#v",tc, tags)
+		}
+	}
+
 }
 
 func TestUrlToGitHubRepo(t *testing.T) {
@@ -212,10 +303,10 @@ func TestApiResp(t *testing.T) {
 	}
 
 	// ... check we get next page back
-	resp, next, err := r.apiResp("foo/bar/tags", "1", headers{})
+	resp, next, err := r.apiResp("repos/foo/bar/tags", "1", headers{})
 
 	if err != nil {
-		t.Fatalf("did not expect error when calling /foo/bar/tags, page 1")
+		t.Fatalf("did not expect error when calling repos/foo/bar/tags, page 1: %s", err)
 	}
 	if next != "2" {
 		t.Fatalf("expected 2nd page of results from Link response header")
@@ -231,9 +322,9 @@ func TestApiResp(t *testing.T) {
 	}
 
 	// ... check no further pages after last
-	_, next, err = r.apiResp("foo/bar/tags", "2", headers{})
+	_, next, err = r.apiResp("repos/foo/bar/tags", "2", headers{})
 	if err != nil {
-		t.Fatalf("did not expect error when calling /foo/bar/tags, page 1")
+		t.Fatalf("did not expect error when calling repos/foo/bar/tags, page 1")
 	}
 	if next != "" {
 		t.Fatalf("expected no more results from Link response header")
@@ -284,13 +375,21 @@ func apiStub() *httptest.Server {
 				}
 				switch r.RequestURI {
 
-				case "/foo/bar/tags?per_page=100&page=1":
+				case "/repos/foo/bar/tags?per_page=100&page=1":
 					w.Header().Set("Link", apiTagsPage1Link)
 					resp = apiTagsPage1
 
-				case "/foo/bar/tags?per_page=100&page=2":
+				case "/repos/foo/bar/tags?per_page=100&page=2":
 					w.Header().Set("Link", apiTagsPage2Link)
 					resp = apiTagsPage2
+
+				case "/repos/foo/bar/releases?per_page=100&page=1":
+					w.Header().Set("Link", relsPage1Link)
+					resp = relsPage1
+
+				case "/repos/foo/bar/releases?per_page=100&page=2":
+					w.Header().Set("Link", relsPage2Link)
+					resp = relsPage2
 
 				case "/fail/twice":
 					if counter == 2 {
