@@ -17,7 +17,7 @@ func TestFetchReleaseTags(t *testing.T) {
 	defer s.Close()
 
 	// ... has some published release tags with all requested assets.
-	r1 := GitHubRepo{
+	r1 := repo{
 		Url:   "https://github.com/foo/bar",
 		Owner: "foo",
 		Name:  "bar",
@@ -26,7 +26,7 @@ func TestFetchReleaseTags(t *testing.T) {
 	}
 
 	// ... has no releases that are both published and have all requested assets.
-	r2 := GitHubRepo{
+	r2 := repo{
 		Url:   "https://github.com/sna/fu",
 		Owner: "sna",
 		Name:  "fu",
@@ -34,7 +34,7 @@ func TestFetchReleaseTags(t *testing.T) {
 		Api:   s.URL,
 	}
 
-	r3 := GitHubRepo{
+	r3 := repo{
 		Url:   "https://github.com/has/no",
 		Owner: "has",
 		Name:  "no",
@@ -83,7 +83,7 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 	s := apiStub()
 	defer s.Close()
 
-	r1 := GitHubRepo{
+	r1 := repo{
 		Url:   "https://github.com/foo/bar",
 		Owner: "foo",
 		Name:  "bar",
@@ -91,7 +91,7 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 		Api:   s.URL,
 	}
 
-	r2 := GitHubRepo{
+	r2 := repo{
 		Url:   "https://github.com/has/no",
 		Owner: "has",
 		Name:  "no",
@@ -181,32 +181,32 @@ func TestFilterTags(t *testing.T) {
 		{2, "irrelevant-for-this", "magic.h"},
 	}
 
-	respAllValid := []GitHubReleaseApiResponse{
+	respAllValid := []release{
 		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets},
 		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets},
 		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets},
 	}
 
-	respAllPrerelease := []GitHubReleaseApiResponse{
+	respAllPrerelease := []release{
 		{1, "irrelevant-for-this", "MagicFoo1", true, "v1.0.0", allAssets},
 		{2, "irrelevant-for-this", "MagicFoo2", true, "v2.0.0", allAssets},
 		{3, "irrelevant-for-this", "MagicFoo3", true, "v3.0.0", allAssets},
 	}
 
-	respTooFewAssets := []GitHubReleaseApiResponse{
+	respTooFewAssets := []release{
 		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets},
 		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", missingAsset},
 		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets},
 	}
 
-	respWrongAsset := []GitHubReleaseApiResponse{
+	respWrongAsset := []release{
 		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets},
 		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets},
 		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", wrongAsset},
 	}
 
 	cases := []struct {
-		resps  []GitHubReleaseApiResponse
+		resps  []release
 		result []string
 	}{
 		{respAllValid, []string{"v1.0.0", "v2.0.0", "v3.0.0"}},
@@ -246,7 +246,7 @@ func TestUrlToGitHubRepo(t *testing.T) {
 	for _, tc := range cases {
 		repo, err := urlToGitHubRepo(tc.repoUrl, tc.token)
 		if err != nil {
-			t.Fatalf("error extracting url %s into a GitHubRepo struct: %s", tc.repoUrl, err)
+			t.Fatalf("error extracting url %s into a repo struct: %s", tc.repoUrl, err)
 		}
 
 		if repo.Owner != tc.owner {
@@ -297,7 +297,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 		Name: "fetch.tgz",
 	}
 
-	expectedFetchTestPublicRelease := GitHubReleaseApiResponse{
+	expectedFetchTestPublicRelease := release{
 		Id:         8471364,
 		Url:        "https://api.github.com/repos/opsgang/fetch/releases/8471364",
 		Name:       "static binary for amd64 linux",
@@ -310,7 +310,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 		repoUrl   string
 		repoToken string
 		tag       string
-		expected  GitHubReleaseApiResponse
+		expected  release
 	}{
 		{"https://github.com/opsgang/fetch", token, "v0.1.1", expectedFetchTestPublicRelease},
 	}
@@ -375,7 +375,7 @@ func TestApiResp(t *testing.T) {
 	s := apiStub()
 	defer s.Close()
 
-	r := GitHubRepo{
+	r := repo{
 		Url:   "https://github.com/foo/bar",
 		Owner: "foo",
 		Name:  "bar",

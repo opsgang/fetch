@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-type GitHubRepo struct {
+type repo struct {
 	Url   string // The URL of the GitHub repo
 	Owner string // The GitHub account name under which the repo exists
 	Name  string // The GitHub repo name
@@ -36,7 +36,7 @@ type headers map[string]string
 // GitHubCommit {}:
 // A specific git commit.
 type GitHubCommit struct {
-	Repo      GitHubRepo // The GitHub repo where this release lives
+	Repo      repo // The GitHub repo where this release lives
 	GitTag    string     // The specific git tag for this release
 	branch    string     // If specified, will find HEAD commit
 	commitSha string     // Specific sha
@@ -56,9 +56,9 @@ type GitHubTagsCommitApiResponse struct {
 	Url string // The URL to get more commit info
 }
 
-// GitHubReleaseApiResponse {}:
+// release {}:
 // https://developer.github.com/v3/repos/releases/#get-a-release-by-tag-name
-type GitHubReleaseApiResponse struct {
+type release struct {
 	Id         int    // release id
 	Url        string // release url
 	Name       string // release name (not tag)
@@ -89,7 +89,7 @@ func init() {
 // i) published
 // ii) contain the desired --release-assets
 // iii) starts with --tag-prefix if specified
-func (o *fetchOpts) fetchReleaseTags(r GitHubRepo) (tagsForValidRels []string, err error) {
+func (o *fetchOpts) fetchReleaseTags(r repo) (tagsForValidRels []string, err error) {
 
 	url := createGitHubRepoUrlForPath(r, "releases")
 	resps, err := r.callGitHubApi(url, headers{})
@@ -105,7 +105,7 @@ func (o *fetchOpts) fetchReleaseTags(r GitHubRepo) (tagsForValidRels []string, e
 		jsonResp := buf.Bytes()
 
 		// Extract the JSON into our array of gitHubTagsCommitApiResponse's
-		var rels []GitHubReleaseApiResponse
+		var rels []release
 		if err := json.Unmarshal(jsonResp, &rels); err != nil {
 			return tagsForValidRels, err
 		}
@@ -127,17 +127,21 @@ func (o *fetchOpts) fetchReleaseTags(r GitHubRepo) (tagsForValidRels []string, e
 
 // filterTags ():
 // ... fetchOpts only used for slice of release assets
-func (o *fetchOpts) filterTags(rels []GitHubReleaseApiResponse) (tags []string) {
+func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 
 	for _, rel := range rels {
 		// ... skip if prerelease
 		if rel.Prerelease {
-			fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
+			if o.verbose {
+				fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
+			}
 			continue
 		}
 		// ... skip if release contains fewer assets than number requested
 		if len(rel.Assets) < len(o.ReleaseAssets) {
-			fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
+			if o.verbose {
+				fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
+			}
 			continue
 		}
 
@@ -151,7 +155,9 @@ func (o *fetchOpts) filterTags(rels []GitHubReleaseApiResponse) (tags []string) 
 			if stringInSlice(a, relAssetsList) {
 				continue
 			} else {
-				fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
+				if o.verbose {
+					fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
+				}
 				missingAsset = true
 				break
 			}
@@ -168,7 +174,7 @@ func (o *fetchOpts) filterTags(rels []GitHubReleaseApiResponse) (tags []string) 
 }
 
 // Fetch all tags from the given GitHub repo
-func FetchTags(r GitHubRepo) ([]string, error) {
+func FetchTags(r repo) ([]string, error) {
 	var tags []string
 
 	url := createGitHubRepoUrlForPath(r, "tags")
@@ -201,9 +207,9 @@ func FetchTags(r GitHubRepo) ([]string, error) {
 	return tags, err
 }
 
-// Convert a URL into a GitHubRepo struct
-func urlToGitHubRepo(url string, token string) (GitHubRepo, error) {
-	var gitHubRepo GitHubRepo
+// Convert a URL into a repo struct
+func urlToGitHubRepo(url string, token string) (repo, error) {
+	var gitHubRepo repo
 
 	regex, regexErr := regexp.Compile("https?://(?:www\\.)?github.com/(.+?)/(.+?)(?:$|\\?|#|/)")
 	if regexErr != nil {
@@ -215,7 +221,7 @@ func urlToGitHubRepo(url string, token string) (GitHubRepo, error) {
 		return gitHubRepo, fmt.Errorf("GitHub Repo URL %s could not be parsed correctly", url)
 	}
 
-	gitHubRepo = GitHubRepo{
+	gitHubRepo = repo{
 		Url:   url,
 		Owner: matches[1],
 		Name:  matches[2],
@@ -227,7 +233,7 @@ func urlToGitHubRepo(url string, token string) (GitHubRepo, error) {
 }
 
 // Download the release asset with the given id and return its body
-func FetchReleaseAsset(r GitHubRepo, assetId int, destPath string) error {
+func FetchReleaseAsset(r repo, assetId int, destPath string) error {
 
 	url := createGitHubRepoUrlForPath(r, fmt.Sprintf("releases/assets/%d", assetId))
 
@@ -241,8 +247,8 @@ func FetchReleaseAsset(r GitHubRepo, assetId int, destPath string) error {
 }
 
 // Get information about the GitHub release with the given tag
-func GetGitHubReleaseInfo(r GitHubRepo, tag string) (GitHubReleaseApiResponse, error) {
-	release := GitHubReleaseApiResponse{}
+func GetGitHubReleaseInfo(r repo, tag string) (release, error) {
+	release := release{}
 
 	url := createGitHubRepoUrlForPath(r, fmt.Sprintf("releases/tags/%s", tag))
 	resp, _, err := r.apiResp(url, "", headers{})
@@ -261,7 +267,7 @@ func GetGitHubReleaseInfo(r GitHubRepo, tag string) (GitHubReleaseApiResponse, e
 }
 
 // Craft a URL for the GitHub repos API of the form repos/:owner/:repo/:path
-func createGitHubRepoUrlForPath(r GitHubRepo, path string) string {
+func createGitHubRepoUrlForPath(r repo, path string) string {
 	return fmt.Sprintf("repos/%s/%s/%s", r.Owner, r.Name, path)
 }
 
@@ -289,7 +295,7 @@ func retryReq(request *http.Request, url string) (resp *http.Response, err error
 	return
 }
 
-func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
+func (r repo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
 
 	var resp *http.Response
 
@@ -340,7 +346,7 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 
 // callGitHubApi ():
 // Call the GitHub API, return HTTP response, and next page number if any
-func (r GitHubRepo) callGitHubApi(path string, h headers) (resps []*http.Response, err error) {
+func (r repo) callGitHubApi(path string, h headers) (resps []*http.Response, err error) {
 	page := "1"
 
 	for page != "" {

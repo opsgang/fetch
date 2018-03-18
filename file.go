@@ -146,10 +146,9 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	return nil
 }
 
-func unpack(sourceFileName, destDir string) (err error) {
-	if err != nil {
-		return err
-	}
+// doUnpack ():
+// ... prefixed 'do' as field 'unpack' already exists in fetchOpts{}
+func (o *fetchOpts) doUnpack(sourceFileName string) (err error) {
 	fileExt, err := detectFileType(sourceFileName)
 	if err != nil {
 		return fmt.Errorf("Error detecting filetype of %s: %s", sourceFileName, err)
@@ -157,11 +156,11 @@ func unpack(sourceFileName, destDir string) (err error) {
 
 	switch fileExt {
 	case "gz":
-		if err = gunzip(sourceFileName, destDir); err != nil {
+		if err = o.gunzip(sourceFileName); err != nil {
 			return err
 		}
 	case "tar":
-		if err = untar(sourceFileName, destDir); err != nil {
+		if err = o.untar(sourceFileName); err != nil {
 			return err
 		}
 	}
@@ -184,7 +183,8 @@ func detectFileType(source string) (fileExt string, err error) {
 }
 
 // gunzip : Remember, a gzip will only contain a single file
-func gunzip(sourceFileName, destDir string) error {
+func (o *fetchOpts) gunzip(sourceFileName string) error {
+	destDir := o.DownloadDir
 	reader, err := os.Open(sourceFileName)
 	if err != nil {
 		return err
@@ -199,7 +199,10 @@ func gunzip(sourceFileName, destDir string) error {
 
 	// need to provide a full path for location of ungzipped file
 	gunZipped := filepath.Join(destDir, fmt.Sprintf("%s.gunzipped", filepath.Base(sourceFileName)))
-	fmt.Printf("Gunzipping %s\n", sourceFileName)
+
+	if o.verbose {
+		fmt.Printf("Gunzipping %s\n", sourceFileName)
+	}
 	writer, err := os.Create(gunZipped)
 	if err != nil {
 		return err
@@ -219,7 +222,7 @@ func gunzip(sourceFileName, destDir string) error {
 	}
 
 	// now untar if needed
-	if err = unpack(newSource, destDir); err != nil {
+	if err = o.doUnpack(newSource); err != nil {
 		return err
 	}
 
@@ -231,8 +234,11 @@ func gunzip(sourceFileName, destDir string) error {
 }
 
 // untar : untars arg1 archive in to arg2 dir
-func untar(sourceFileName, destDir string) error {
-	fmt.Printf("Untarring %s\n", sourceFileName)
+func (o *fetchOpts) untar(sourceFileName string) error {
+	destDir := o.DownloadDir
+	if o.verbose {
+		fmt.Printf("Untarring %s\n", sourceFileName)
+	}
 	reader, err := os.Open(sourceFileName)
 	if err != nil {
 		return err

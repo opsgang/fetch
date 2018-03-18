@@ -31,7 +31,8 @@ type fetchOpts struct {
 	fromPaths     []string
 	ReleaseAssets []string
 	unpack        bool
-	GpgPublicKey  string
+	verbose       bool
+	gpgPubKey  string
 	DownloadDir   string
 }
 
@@ -41,6 +42,7 @@ type releaseDl struct {
 	Name      string
 	LocalPath string
 	Tag       string
+	verbose   bool
 }
 
 const optRepo = "repo"
@@ -51,7 +53,8 @@ const optGithubToken = "oauth-token"
 const optFromPath = "from-path"
 const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
-const optGpgPublicKey = "gpg-public-key"
+const optGpgPubKey = "gpg-public-key"
+const optVerbose = "verbose"
 
 func main() {
 	app := cli.NewApp()
@@ -93,9 +96,13 @@ func main() {
 			Name:  optUnpack,
 			Usage: txtUnpack,
 		},
+		cli.BoolFlag{
+			Name:  optVerbose,
+			Usage: txtVerbose,
+		},
 		cli.StringFlag{
-			Name:  optGpgPublicKey,
-			Usage: txtGpgPublicKey,
+			Name:  optGpgPubKey,
+			Usage: txtGpgPubKey,
 		},
 		cli.StringFlag{
 			Name:   optGithubToken,
@@ -190,7 +197,8 @@ func parseOptions(c *cli.Context) fetchOpts {
 		fromPaths:     c.StringSlice(optFromPath),
 		ReleaseAssets: c.StringSlice(optReleaseAsset),
 		unpack:        c.Bool(optUnpack),
-		GpgPublicKey:  c.String(optGpgPublicKey),
+		verbose:       c.Bool(optVerbose),
+		gpgPubKey:     c.String(optGpgPubKey),
 		DownloadDir:   localDownloadPath,
 	}
 }
@@ -220,15 +228,15 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optReleaseAsset)
 	}
 
-	if o.GpgPublicKey != "" {
+	if o.gpgPubKey != "" {
 		if len(o.ReleaseAssets) == 0 {
-			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpgPublicKey, optReleaseAsset)
+			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpgPubKey, optReleaseAsset)
 		}
 
 		// check file is readable
-		reader, err := os.Open(o.GpgPublicKey)
+		reader, err := os.Open(o.gpgPubKey)
 		if err != nil {
-			return fmt.Errorf("GPG public key %s is not a readable file.", o.GpgPublicKey)
+			return fmt.Errorf("GPG public key %s is not a readable file.", o.gpgPubKey)
 		}
 		defer reader.Close()
 	}
@@ -237,7 +245,7 @@ func validateOptions(o fetchOpts) error {
 }
 
 // Download the specified source files from the given repo
-func (o *fetchOpts) downloadFromPaths(githubRepo GitHubRepo, latestTag string) error {
+func (o *fetchOpts) downloadFromPaths(githubRepo repo, latestTag string) error {
 	if len(o.fromPaths) == 0 {
 		return nil
 	}
@@ -285,16 +293,16 @@ func (o *fetchOpts) downloadFromPaths(githubRepo GitHubRepo, latestTag string) e
 
 // Download the specified binary files that were uploaded as release assets to the specified GitHub release
 
-func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string) releaseDl {
-	return releaseDl{Asset: asset, Name: name, LocalPath: path, Tag: tag}
+func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string, verbose bool) releaseDl {
+	return releaseDl{Asset: asset, Name: name, LocalPath: path, Tag: tag, verbose: verbose}
 }
 
-func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
+func (o *fetchOpts) downloadReleaseAssets(r repo, tag string) error {
 	if len(o.ReleaseAssets) == 0 {
 		return nil
 	}
 
-	release, err := GetGitHubReleaseInfo(repo, tag)
+	release, err := GetGitHubReleaseInfo(r, tag)
 	if err != nil {
 		fmt.Println("getting release info")
 		return err
@@ -309,14 +317,14 @@ func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
 		}
 
 		assetPath := path.Join(o.DownloadDir, asset.Name)
-		a := newAsset(assetName, assetPath, asset, tag)
+		a := newAsset(assetName, assetPath, asset, tag, o.verbose)
 		fmt.Printf("Downloading release asset %s to %s\n", asset.Name, assetPath)
-		if err := FetchReleaseAsset(repo, asset.Id, assetPath); err != nil {
+		if err := FetchReleaseAsset(r, asset.Id, assetPath); err != nil {
 			return err
 		}
 
-		if o.GpgPublicKey != "" {
-			err := a.verifyGpg(o.GpgPublicKey, release, repo)
+		if o.gpgPubKey != "" {
+			err := a.verifyGpg(o.gpgPubKey, release, r)
 			if err != nil {
 				fmt.Printf("Deleting unverified asset %s\n", assetPath)
 				if remErr := os.Remove(assetPath); remErr != nil {
@@ -328,7 +336,7 @@ func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
 		}
 
 		if o.unpack {
-			if err := unpack(assetPath, o.DownloadDir); err != nil {
+			if err := o.doUnpack(assetPath); err != nil {
 				return err
 			}
 		}
@@ -338,15 +346,19 @@ func (o *fetchOpts) downloadReleaseAssets(repo GitHubRepo, tag string) error {
 	return nil
 }
 
-func (a *releaseDl) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, githubRepo GitHubRepo) error {
+func (a *releaseDl) verifyGpg(gpgKey string, rel release, gr repo) error {
 	asc := findAscInRelease(a.Name, rel)
 	ascPath := fmt.Sprintf("%s.asc", a.LocalPath)
 
 	if asc == nil {
 		return fmt.Errorf("No %s.asc or %s.asc.txt in release %s", a.Name, a.Name, a.Tag)
 	}
-	fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
-	if err := FetchReleaseAsset(githubRepo, asc.Id, ascPath); err != nil {
+
+	if a.verbose {
+		fmt.Printf("Downloading gpg sig %s to %s\n", asc.Name, ascPath)
+	}
+
+	if err := FetchReleaseAsset(gr, asc.Id, ascPath); err != nil {
 		return err
 	}
 
@@ -358,7 +370,7 @@ func (a *releaseDl) verifyGpg(gpgKey string, rel GitHubReleaseApiResponse, githu
 	return err
 }
 
-func findAssetInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
+func findAssetInRelease(assetName string, release release) *GitHubReleaseAsset {
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
 			return &asset
@@ -368,7 +380,7 @@ func findAssetInRelease(assetName string, release GitHubReleaseApiResponse) *Git
 	return nil
 }
 
-func findAscInRelease(assetName string, release GitHubReleaseApiResponse) *GitHubReleaseAsset {
+func findAscInRelease(assetName string, release release) *GitHubReleaseAsset {
 	for _, asset := range release.Assets {
 		asc := fmt.Sprintf("%s.asc", assetName)
 		ascTxt := fmt.Sprintf("%s.asc.txt", assetName)

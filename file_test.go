@@ -33,7 +33,7 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 
 	for _, tc := range cases {
 		gitHubCommit := GitHubCommit{
-			Repo: GitHubRepo{
+			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -67,7 +67,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 
 	for _, tc := range cases {
 		gitHubCommit := GitHubCommit{
-			Repo: GitHubRepo{
+			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -100,7 +100,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 
 	for _, tc := range cases {
 		gitHubCommit := GitHubCommit{
-			Repo: GitHubRepo{
+			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -131,7 +131,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 
 	for _, tc := range cases {
 		gitHubCommit := GitHubCommit{
-			Repo: GitHubRepo{
+			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -169,7 +169,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 
 	for _, tc := range cases {
 		gitHubCommit := GitHubCommit{
-			Repo: GitHubRepo{
+			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -198,7 +198,7 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 
 	for _, tc := range cases {
 		gitHubCommit := GitHubCommit{
-			Repo: GitHubRepo{
+			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -310,7 +310,10 @@ func TestUnpack(t *testing.T) {
 			t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
 		}
 
-		err = unpack(sourceFile, tempDir)
+		var o fetchOpts
+		o.DownloadDir = tempDir
+
+		err = o.doUnpack(sourceFile)
 		if err != nil {
 			t.Fatalf("Failed to unpack files: %s", err)
 		}
@@ -372,7 +375,10 @@ func TestUntar(t *testing.T) {
 		t.Fatalf("Failed to copy file %s: %s", sourceFileOriginal, err)
 	}
 
-	err = untar(sourceFile, tempDir)
+	var o fetchOpts
+	o.DownloadDir = tempDir
+
+	err = o.untar(sourceFile)
 	if err != nil {
 		t.Fatalf("Failed to untar files: %s", err)
 	}

@@ -1,7 +1,7 @@
 package main
 
-// the const below contain zero-width spaces to force urfave/cli-generated
-// help text to separate sections with a blank line.
+// the consts below contain zero-width spaces to force urfave/cli-generated
+// help text to separate sections with a blank line, for readability.
 
 const usageLead = `
 	GITHUB_TOKEN=$access_token ghfetch [global options] /my/downloads/dir
@@ -59,6 +59,12 @@ Name of github release attachment to download. Requires --tag.
 	​
 `
 
+const txtVerbose = `
+Shouty mode. Reveals more of what's happening during execution.
+	For when STDOUT craves more excitement.
+	​
+`
+
 const txtUnpack = `
 Whether to unpack a compressed release attachment. Requires --release-asset.
 	Only unpacks tars, tar-gzip and gzip, otherwise does nothing.
@@ -68,7 +74,7 @@ Whether to unpack a compressed release attachment. Requires --release-asset.
 	​
 `
 
-const txtGpgPublicKey = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
+const txtGpgPubKey = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
 	Requires --release-asset.
 	If set, will look for <asset-name>.asc or <asset-name>.asc.txt attached
 	to the chosen release. That signature and /PATH/TO/KEY will be used
