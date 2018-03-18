@@ -311,7 +311,7 @@ func TestUnpack(t *testing.T) {
 		}
 
 		var o fetchOpts
-		o.DownloadDir = tempDir
+		o.destDir = tempDir
 
 		err = o.doUnpack(sourceFile)
 		if err != nil {
@@ -376,7 +376,7 @@ func TestUntar(t *testing.T) {
 	}
 
 	var o fetchOpts
-	o.DownloadDir = tempDir
+	o.destDir = tempDir
 
 	err = o.untar(sourceFile)
 	if err != nil {

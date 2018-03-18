@@ -43,7 +43,7 @@ func TestFetchReleaseTags(t *testing.T) {
 	}
 
 	var o fetchOpts
-	o.ReleaseAssets = []string{"foo.tgz", "bar.tgz"}
+	o.relAssets = []string{"foo.tgz", "bar.tgz"}
 
 	// test when there are paginated tags results, and only some have releases
 	// ... get results from the stub server for foo/bar
@@ -162,7 +162,7 @@ func TestFilterTags(t *testing.T) {
 	t.Parallel()
 
 	var o fetchOpts
-	o.ReleaseAssets = []string{"magic.rb", "wizardry.py", "sourcery.go"}
+	o.relAssets = []string{"magic.rb", "wizardry.py", "sourcery.go"}
 
 	allAssets := []GitHubReleaseAsset{
 		{1, "irrelevant-for-this", "magic.rb"},

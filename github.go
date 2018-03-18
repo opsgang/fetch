@@ -138,7 +138,7 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 			continue
 		}
 		// ... skip if release contains fewer assets than number requested
-		if len(rel.Assets) < len(o.ReleaseAssets) {
+		if len(rel.Assets) < len(o.relAssets) {
 			if o.verbose {
 				fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
 			}
@@ -151,7 +151,7 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 		}
 		// ... skip if desired asset not in list of attached assets
 		var missingAsset bool
-		for _, a := range o.ReleaseAssets {
+		for _, a := range o.relAssets {
 			if stringInSlice(a, relAssetsList) {
 				continue
 			} else {

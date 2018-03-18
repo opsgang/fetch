@@ -1,6 +1,5 @@
-/* Package main is the Highlander of namespaces.
-There can be only one.
-*/
+// Package main is the Highlander of namespaces.
+// *There can be only one.*
 package main
 
 import (
@@ -29,19 +28,19 @@ type fetchOpts struct {
 	tagConstraint string
 	githubToken   string
 	fromPaths     []string
-	ReleaseAssets []string
+	relAssets     []string
 	unpack        bool
 	verbose       bool
 	gpgPubKey     string
-	DownloadDir   string
+	destDir       string
 }
 
 // releaseDl : data to complete download of a release asset
 type releaseDl struct {
-	Asset     *GitHubReleaseAsset
-	Name      string
-	LocalPath string
-	Tag       string
+	*GitHubReleaseAsset
+	name      string
+	localPath string
+	tag       string
 	verbose   bool
 }
 
@@ -145,7 +144,7 @@ func runFetch(c *cli.Context) (err error) {
 	// Get the tags for the given repo
 	// or tags for actual releases if getting release assets.
 	var tags []string
-	if len(o.ReleaseAssets) == 0 {
+	if len(o.relAssets) == 0 {
 		tags, err = FetchTags(r)
 	} else {
 		tags, err = o.fetchReleaseTags(r)
@@ -168,7 +167,7 @@ func runFetch(c *cli.Context) (err error) {
 
 	// If no release assets or from-paths specified, assume
 	// user wants all files from zipball.
-	if len(o.fromPaths) == 0 && len(o.ReleaseAssets) == 0 {
+	if len(o.fromPaths) == 0 && len(o.relAssets) == 0 {
 		o.fromPaths = []string{"/"}
 	}
 
@@ -195,11 +194,11 @@ func parseOptions(c *cli.Context) fetchOpts {
 		tagConstraint: c.String(optTag),
 		githubToken:   c.String(optGithubToken),
 		fromPaths:     c.StringSlice(optFromPath),
-		ReleaseAssets: c.StringSlice(optReleaseAsset),
+		relAssets:     c.StringSlice(optReleaseAsset),
 		unpack:        c.Bool(optUnpack),
 		verbose:       c.Bool(optVerbose),
 		gpgPubKey:     c.String(optGpgPubKey),
-		DownloadDir:   localDownloadPath,
+		destDir:       localDownloadPath,
 	}
 }
 
@@ -208,7 +207,7 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", optRepo)
 	}
 
-	if o.DownloadDir == "" {
+	if o.destDir == "" {
 		return fmt.Errorf("Missing required arguments specifying the local download dir. Run \"fetch --help\" for full usage info.")
 	}
 
@@ -216,20 +215,20 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", optTag, optCommit, optBranch)
 	}
 
-	if len(o.ReleaseAssets) > 0 && o.tagConstraint == "" {
+	if len(o.relAssets) > 0 && o.tagConstraint == "" {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optReleaseAsset, optTag)
 	}
 
-	if len(o.ReleaseAssets) > 0 && len(o.fromPaths) > 0 {
+	if len(o.relAssets) > 0 && len(o.fromPaths) > 0 {
 		return fmt.Errorf("Specify only --%s or --%s, not both.", optReleaseAsset, optFromPath)
 	}
 
-	if len(o.ReleaseAssets) == 0 && o.unpack {
+	if len(o.relAssets) == 0 && o.unpack {
 		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optReleaseAsset)
 	}
 
 	if o.gpgPubKey != "" {
-		if len(o.ReleaseAssets) == 0 {
+		if len(o.relAssets) == 0 {
 			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpgPubKey, optReleaseAsset)
 		}
 
@@ -281,8 +280,8 @@ func (o *fetchOpts) downloadFromPaths(githubRepo repo, latestTag string) error {
 
 	// Unzip and move the files we need to our destination
 	for _, fromPath := range o.fromPaths {
-		fmt.Printf("Extracting files from <repo>%s to %s ...\n", fromPath, o.DownloadDir)
-		if err := extractFiles(localZipFilePath, fromPath, o.DownloadDir); err != nil {
+		fmt.Printf("Extracting files from <repo>%s to %s ...\n", fromPath, o.destDir)
+		if err := extractFiles(localZipFilePath, fromPath, o.destDir); err != nil {
 			return fmt.Errorf("Error occurred while extracting files from GitHub zip file: %s", err.Error())
 		}
 	}
@@ -294,11 +293,11 @@ func (o *fetchOpts) downloadFromPaths(githubRepo repo, latestTag string) error {
 // Download the specified binary files that were uploaded as release assets to the specified GitHub release
 
 func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string, verbose bool) releaseDl {
-	return releaseDl{Asset: asset, Name: name, LocalPath: path, Tag: tag, verbose: verbose}
+	return releaseDl{asset, name, path, tag, verbose}
 }
 
 func (o *fetchOpts) downloadReleaseAssets(r repo, tag string) error {
-	if len(o.ReleaseAssets) == 0 {
+	if len(o.relAssets) == 0 {
 		return nil
 	}
 
@@ -309,14 +308,14 @@ func (o *fetchOpts) downloadReleaseAssets(r repo, tag string) error {
 	}
 
 	// ... create download dir
-	os.MkdirAll(o.DownloadDir, 0755)
-	for _, assetName := range o.ReleaseAssets {
+	os.MkdirAll(o.destDir, 0755)
+	for _, assetName := range o.relAssets {
 		asset := findAssetInRelease(assetName, release)
 		if asset == nil {
 			return fmt.Errorf("Could not find asset %s in release %s", assetName, tag)
 		}
 
-		assetPath := path.Join(o.DownloadDir, asset.Name)
+		assetPath := path.Join(o.destDir, asset.Name)
 		a := newAsset(assetName, assetPath, asset, tag, o.verbose)
 		fmt.Printf("Downloading release asset %s to %s\n", asset.Name, assetPath)
 		if err := FetchReleaseAsset(r, asset.Id, assetPath); err != nil {
@@ -347,11 +346,11 @@ func (o *fetchOpts) downloadReleaseAssets(r repo, tag string) error {
 }
 
 func (a *releaseDl) verifyGpg(gpgKey string, rel release, gr repo) error {
-	asc := findAscInRelease(a.Name, rel)
-	ascPath := fmt.Sprintf("%s.asc", a.LocalPath)
+	asc := findAscInRelease(a.name, rel)
+	ascPath := fmt.Sprintf("%s.asc", a.localPath)
 
 	if asc == nil {
-		return fmt.Errorf("No %s.asc or %s.asc.txt in release %s", a.Name, a.Name, a.Tag)
+		return fmt.Errorf("No %s.asc or %s.asc.txt in release %s", a.name, a.name, a.tag)
 	}
 
 	if a.verbose {
@@ -362,7 +361,7 @@ func (a *releaseDl) verifyGpg(gpgKey string, rel release, gr repo) error {
 		return err
 	}
 
-	err := gpgVerify(gpgKey, ascPath, a.LocalPath)
+	err := gpgVerify(gpgKey, ascPath, a.localPath)
 	if warning := os.Remove(ascPath); warning != nil {
 		fmt.Printf("Could not remove sig file %s\n", ascPath)
 	}

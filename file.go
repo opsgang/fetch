@@ -184,7 +184,7 @@ func detectFileType(source string) (fileExt string, err error) {
 
 // gunzip : Remember, a gzip will only contain a single file
 func (o *fetchOpts) gunzip(sourceFileName string) error {
-	destDir := o.DownloadDir
+	destDir := o.destDir
 	reader, err := os.Open(sourceFileName)
 	if err != nil {
 		return err
@@ -235,7 +235,7 @@ func (o *fetchOpts) gunzip(sourceFileName string) error {
 
 // untar : untars arg1 archive in to arg2 dir
 func (o *fetchOpts) untar(sourceFileName string) error {
-	destDir := o.DownloadDir
+	destDir := o.destDir
 	if o.verbose {
 		fmt.Printf("Untarring %s\n", sourceFileName)
 	}
