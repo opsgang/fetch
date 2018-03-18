@@ -152,8 +152,3 @@ fetch --repo="https://github.com/foo/bar" --tag="0.1.5" --release-asset="foo.exe
 
 This code is released under the MIT License. See [LICENSE.txt](/LICENSE.txt).
 
-## TODO
-
-- Introduce code verification using something like GPG signatures or published checksums
-- Explicitly test for exotic repo and org names
-- Apply stricter parsing for repo-filter command-line arg
