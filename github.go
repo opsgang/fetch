@@ -194,7 +194,11 @@ func FetchTags(r GitHubRepo) ([]string, error) {
 		}
 	}
 
-	return tags, nil
+	if len(tags) == 0 {
+		return tags, fmt.Errorf("No tags found from %s", url)
+	}
+
+	return tags, err
 }
 
 // Convert a URL into a GitHubRepo struct
@@ -308,12 +312,10 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 
 	resp, err = retryReq(request, url)
 	if err != nil { // not checking resp code, only whether http transport succeeded
-		fmt.Println("Failed retryReq")
 		return nil, "", err
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Println("Got non-200")
 		// Convert the resp.Body to a string
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
@@ -332,7 +334,6 @@ func (r GitHubRepo) apiResp(path string, page string, h headers) (*http.Response
 			}
 		}
 	}
-
 
 	return resp, next, err
 }

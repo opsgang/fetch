@@ -26,13 +26,8 @@ downloaded.
 
 # IN PROGRESS
 
-## mocking of api calls
-
-## better tests
-* for large tag sets
-* for repo with no tags
-* for repo with no releases
-* for releases with out all assets requested
+## --verbose
+Suppress output unless this is specified.
 
 ## rename to ghget | glget | bbget (it's shorter)
 
@@ -46,6 +41,14 @@ to me again.
 Still need to rename all vars, methods that use Fetch to use something else.
 
 # DONE
+
+## mocking of api calls
+
+## better tests
+* - [x] for large tag sets
+* - [x] for repo with no tags
+* - [x] for repo with no releases
+* - [x] for releases with out all assets requested
 
 ## http transport settings
 

@@ -1,5 +1,17 @@
 package main
 
+const apiNoTags = `
+[
+
+]
+`
+
+const apiNoReleases = `
+[
+
+]
+`
+
 const apiTagsPage1 = `
 [
   {
@@ -963,74 +975,182 @@ const apiTagsPage2Link = `
 <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="first"
 `
 
+var apiTagsExpected = []string{
+	"tag-jin-tries-arbitrary-tag-01",
+	"tag-non-semantic-version-1.0.05.6",
+	"tag-jin-prefix-0.0.1",
+	"tag-fix-hcc-iframe-for-ssl",
+	"tag-fix-cid-generation",
+	"foo-bar-Symbionts",
+	"foo-bar-Symbionts-12",
+	"foo-bar-Symbionts-11",
+	"foo-bar-Symbionts-10",
+	"foo-bar-Symbionts-9",
+	"foo-bar-Symbionts-8",
+	"foo-bar-Symbionts-7",
+	"foo-bar-Symbionts-6",
+	"foo-bar-Symbionts-5",
+	"foo-bar-Symbionts-4",
+	"foo-bar-Symbionts-3",
+	"foo-bar-Symbionts-2",
+	"foo-bar-Symbionts-1",
+	"foo-bar-Sprint-Release-44.0.0",
+	"foo-bar-Sprint-Release-43.0.0",
+	"foo-bar-Sprint-Release-42.0.0",
+	"foo-bar-Sprint-Release-38.0.0",
+	"foo-bar-Sprint-Release-37.0.1",
+	"foo-bar-Sprint-Release-37.0.0",
+	"foo-bar-Sprint-Release-36.0.7",
+	"foo-bar-Sprint-Release-36.0.6",
+	"foo-bar-Sprint-Release-36.0.5",
+	"foo-bar-Sprint-Release-36.0.4",
+	"foo-bar-Sprint-Release-36.0.3",
+	"foo-bar-Sprint-Release-36.0.2",
+	"foo-bar-Sprint-Release-36.0.1",
+	"foo-bar-Sprint-Release-36.0.0",
+	"foo-bar-Sprint-Release-35.3.0",
+	"foo-bar-Sprint-Release-35.2.0",
+	"foo-bar-Sprint-Release-35.1.0",
+	"foo-bar-Sprint-Release-35.0.1",
+	"foo-bar-Sprint-Release-35.0.0",
+	"foo-bar-Sprint-Release-34.0.0",
+	"foo-bar-Sprint-Release-33.0.0",
+	"foo-bar-Sprint-Release-32.0.0",
+	"foo-bar-Sprint-Release-31.0.0",
+	"foo-bar-Sprint-Release-30.0.0",
+	"foo-bar-Sprint-Release-29.1.0",
+	"foo-bar-Sprint-Release-29.0.0",
+	"foo-bar-Sprint-Release-28.5.1",
+	"foo-bar-Sprint-Release-28.5.0",
+	"foo-bar-Sprint-Release-28.4.3",
+	"foo-bar-Sprint-Release-28.4.2",
+	"foo-bar-Sprint-Release-28.4.1",
+	"foo-bar-Sprint-Release-28.4.0",
+	"foo-bar-Sprint-Release-28.3.1",
+	"foo-bar-Sprint-Release-28.3.0",
+	"foo-bar-Sprint-Release-28.2.1",
+	"foo-bar-Sprint-Release-28.2.0",
+	"foo-bar-Sprint-Release-28.1.0",
+	"foo-bar-Sprint-Release-28.0.2",
+	"foo-bar-Sprint-Release-28.0.1",
+	"foo-bar-Sprint-Release-28.0.0",
+	"foo-bar-Sprint-29.0.0",
+	"foo-bar-Sprint-28.0.0",
+	"foo-bar-Sprint-28.0.0-beta",
+	"foo-bar-Sprint-28-base",
+	"foo-bar-Sprint-27.0.0",
+	"foo-bar-Sprint-26.0.0",
+	"foo-bar-Sprint-24.0.4",
+	"foo-bar-Sprint-24.0.3",
+	"foo-bar-Sprint-24.0.2",
+	"foo-bar-Sprint-24.0.0",
+	"foo-bar-Sprint-23.0.0",
+	"foo-bar-Sprint-21.0.8",
+	"foo-bar-Sprint-21.0.7",
+	"foo-bar-Sprint-21.0.6",
+	"foo-bar-Sprint-21.0.5",
+	"foo-bar-Sprint-21.0.4",
+	"foo-bar-Sprint-21.0.3",
+	"foo-bar-Sprint-21.0.2",
+	"foo-bar-Sprint-21.0.1",
+	"foo-bar-Sprint-21.0.0",
+	"foo-bar-Sprint-20.0.1",
+	"foo-bar-Sprint-20.0.0",
+	"foo-bar-Sprint-19.0.1",
+	"foo-bar-Sprint-19.0.0",
+	"foo-bar-Sprint-18.0.1",
+	"foo-bar-Sprint-18.0.0",
+	"foo-bar-Sprint-17.0.0",
+	"foo-bar-Sprint-16.0.0",
+	"foo-bar-Sprint-15.0.10",
+	"foo-bar-Sprint-15.0.9",
+	"foo-bar-Sprint-15.0.8",
+	"foo-bar-Sprint-15.0.7",
+	"foo-bar-Sprint-15.0.6",
+	"foo-bar-Sprint-15.0.5",
+	"foo-bar-Sprint-15.0.4",
+	"foo-bar-Sprint-15.0.3",
+	"15.0.2",
+	"v15.0.1",
+	"15.0.0",
+	"14.1.18",
+	"v14.1.17",
+	"v14.1.16",
+	"DTC-1338-2",
+	"DTC-1338-1",
+	"46.0.0",
+	"1.1.1",
+	"1.0.0",
+}
+
 const relsPage1 = `
 [
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/9876543",
+    "url": "https://api.github.com/repos/sna/fu/releases/9876543",
     "id": 9876543,
     "tag_name": "9.8.7",
     "name": "prerelease",
     "prerelease": true,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/9854782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/9854782",
         "id": 9854782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/9854783",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/9854783",
         "id": 9854783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/8765432",
+    "url": "https://api.github.com/repos/sna/fu/releases/8765432",
     "id": 8765432,
     "tag_name": "bad8.7.6.5",
     "name": "bad tag",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/8754782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/8754782",
         "id": 8754782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/8754783",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/8754783",
         "id": 8754783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/7654321",
+    "url": "https://api.github.com/repos/sna/fu/releases/7654321",
     "id": 7654321,
     "tag_name": "7.6.5",
     "name": "all good",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7654782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/7654782",
         "id": 7654782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7654783",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/7654783",
         "id": 7654783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/6556789",
+    "url": "https://api.github.com/repos/sna/fu/releases/6556789",
     "id": 6556789,
     "tag_name": "6.5.5",
     "name": "missing asset",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/6554782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/6554782",
         "id": 6554782,
         "name": "foo.tgz"
       }
@@ -1042,71 +1162,71 @@ const relsPage1 = `
 const relsPage2 = `
 [
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/1234567",
+    "url": "https://api.github.com/repos/sna/fu/releases/1234567",
     "id": 1234567,
     "tag_name": "v1.2.3",
     "name": "prerelease",
     "prerelease": true,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/5354782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/5354782",
         "id": 5354782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/5354783",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/5354783",
         "id": 5354783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/2345678",
+    "url": "https://api.github.com/repos/sna/fu/releases/2345678",
     "id": 2345678,
     "tag_name": "bad2.3.4.0",
     "name": "bad tag",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/6354782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/6354782",
         "id": 6354782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/6354783",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/6354783",
         "id": 6354783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/3456789",
+    "url": "https://api.github.com/repos/sna/fu/releases/3456789",
     "id": 3456789,
     "tag_name": "3.4.5",
     "name": "all good",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7354782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/7354782",
         "id": 7354782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/7354783",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/7354783",
         "id": 7354783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/foo/bar/g/releases/4556789",
+    "url": "https://api.github.com/repos/sna/fu/releases/4556789",
     "id": 4556789,
     "tag_name": "4.5.6",
     "name": "missing asset",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/foo/bar/g/releases/assets/8354782",
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/8354782",
         "id": 8354782,
         "name": "foo.tgz"
       }
@@ -1116,9 +1236,102 @@ const relsPage2 = `
 `
 
 const relsPage1Link = `
-<https://api.github.com/repositories/12345678/tags?per_page=100&page=2>; rel="next", <https://api.github.com/repositories/12345678/tags?per_page=100&page=2>; rel="last"
+<https://api.github.com/repositories/12345678/releases?per_page=100&page=2>; rel="next", <https://api.github.com/repositories/12345678/releases?per_page=100&page=2>; rel="last"
 `
 
 const relsPage2Link = `
-<https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="first"
+<https://api.github.com/repositories/12345678/releases?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/releases?per_page=100&page=1>; rel="first"
+`
+
+const noValidRelsPage1 = `
+[
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/9876543",
+    "id": 9876543,
+    "tag_name": "9.8.7",
+    "name": "prerelease, no assets",
+    "prerelease": true,
+    "assets": [
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/8765432",
+    "id": 8765432,
+    "tag_name": "bad8.7.6.5",
+    "name": "another prerelease, no assets",
+    "prerelease": true,
+    "assets": [
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/7654321",
+    "id": 7654321,
+    "tag_name": "7.6.5",
+    "name": "yet another prerelease, no assets",
+    "prerelease": false,
+    "assets": [
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/6556789",
+    "id": 6556789,
+    "tag_name": "6.5.5",
+    "name": "seriously, not a single attached release? And you still haven't fixed this?",
+    "prerelease": false,
+    "assets": [
+    ]
+  }
+]
+`
+const noValidRelsPage2 = `
+[
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/1234567",
+    "id": 1234567,
+    "tag_name": "v1.2.3",
+    "name": "C'mon. Just one little release attachment! You can do it! I believe IN YOU!!!",
+    "prerelease": true,
+    "assets": [
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/2345678",
+    "id": 2345678,
+    "tag_name": "bad2.3.4.0",
+    "name": "Ah go on! Do it for the children!",
+    "prerelease": true,
+    "assets": [
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/3456789",
+    "id": 3456789,
+    "tag_name": "3.4.5",
+    "name": "Are you freakin' kidding me? evil-virus.tgz!?",
+    "prerelease": true,
+    "assets": [
+      {
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/7354782",
+        "id": 7354782,
+        "name": "evil-virus.tgz"
+      },
+    ]
+  },
+  {
+    "url": "https://api.github.com/repos/sna/fu/releases/4556789",
+    "id": 4556789,
+    "tag_name": "4.5.6",
+    "name": "Screw you guys, I'm going home.",
+    "prerelease": true,
+    "assets": [
+    ]
+  }
+]
+`
+const noValidRelsPage1Link = `
+<https://api.github.com/repositories/12345678/releases?per_page=100&page=2>; rel="next", <https://api.github.com/repositories/12345678/releases?per_page=100&page=2>; rel="last"
+`
+
+const noValidRelsPage2Link = `
+<https://api.github.com/repositories/12345678/releases?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/releases?per_page=100&page=1>; rel="first"
 `

@@ -16,7 +16,8 @@ func TestFetchReleaseTags(t *testing.T) {
 	s := apiStub()
 	defer s.Close()
 
-	r := GitHubRepo{
+	// ... has some published release tags with all requested assets.
+	r1 := GitHubRepo{
 		Url:   "https://github.com/foo/bar",
 		Owner: "foo",
 		Name:  "bar",
@@ -24,19 +25,99 @@ func TestFetchReleaseTags(t *testing.T) {
 		Api:   s.URL,
 	}
 
-	var o fetchOpts
-	o.ReleaseAssets = []string{"foo.tgz","bar.tgz"}
-
-	// get the test results from the stub server
-	if tags, err := o.fetchReleaseTags(r) ; err != nil {
-		t.Fatalf("error fetching stub releases for foo/bar: err: %s", err )
-	} else if ! reflect.DeepEqual(tags,[]string{"bad8.7.6.5", "7.6.5", "bad2.3.4.0", "3.4.5"}) {
-			t.Fatalf("error fetching stub releases for foo/bar: got %#v", tags)
+	// ... has no releases that are both published and have all requested assets.
+	r2 := GitHubRepo{
+		Url:   "https://github.com/sna/fu",
+		Owner: "sna",
+		Name:  "fu",
+		Token: "dummytoken",
+		Api:   s.URL,
 	}
 
+	r3 := GitHubRepo{
+		Url:   "https://github.com/has/no",
+		Owner: "has",
+		Name:  "no",
+		Token: "dummytoken",
+		Api:   s.URL,
+	}
+
+	var o fetchOpts
+	o.ReleaseAssets = []string{"foo.tgz", "bar.tgz"}
+
+	// test when there are paginated tags results, and only some have releases
+	// ... get results from the stub server for foo/bar
+	// ... fiterTags is not responsible for discarding non-semantic version tags,
+	// only those that are prereleases, or lack one of more requested attached asset.
+	tags, err := o.fetchReleaseTags(r1)
+	if err != nil {
+		t.Fatalf("error fetching stub releases for foo/bar: err: %s", err)
+	} else if !reflect.DeepEqual(tags, []string{"bad8.7.6.5", "7.6.5", "bad2.3.4.0", "3.4.5"}) {
+		t.Fatalf("error fetching stub releases for foo/bar: got %#v", tags)
+	}
+
+	// test when there are NO valid tags - expect an error, and empty tags
+	// ... get results from the stub server for foo/bar
+	tags, err = o.fetchReleaseTags(r2)
+	if tags != nil {
+		t.Fatalf("should have got no go releases back for this test: got %#v", tags)
+	}
+	if err == nil {
+		t.Fatalf("... should have got an error as no releases from sna/fu")
+	}
+
+	// test when there are no releases of any kind on repo (api returns empty array)
+	// ... get results from the stub server for has/no
+	tags, err = o.fetchReleaseTags(r3)
+	if tags != nil {
+		t.Fatalf("should have got no go releases back for this test: got %#v", tags)
+	}
+	if err == nil {
+		t.Fatalf("... should have got an error as no releases from sna/fu")
+	}
 }
 
-func TestFetchTags(t *testing.T) {
+func TestFetchTagsOnStubApi(t *testing.T) {
+	t.Parallel()
+
+	s := apiStub()
+	defer s.Close()
+
+	r1 := GitHubRepo{
+		Url:   "https://github.com/foo/bar",
+		Owner: "foo",
+		Name:  "bar",
+		Token: "dummytoken",
+		Api:   s.URL,
+	}
+
+	r2 := GitHubRepo{
+		Url:   "https://github.com/has/no",
+		Owner: "has",
+		Name:  "no",
+		Token: "dummytoken",
+		Api:   s.URL,
+	}
+
+	tags, err := FetchTags(r1)
+	if err != nil {
+		t.Fatalf("... should not have erred getting stubbed tags for %s", r1.Url)
+	} else if !reflect.DeepEqual(tags, apiTagsExpected) {
+		t.Fatalf("... got %#v. Expected %#v", tags, apiTagsExpected)
+	}
+
+	// test when no tags returned (empty json array)
+	// ... get results from the stub server for has/no
+	tags, err = FetchTags(r2)
+	if tags != nil {
+		t.Fatalf("should have got no go tags back for this test: got %#v", tags)
+	}
+	if err == nil {
+		t.Fatalf("... should have got an error as no tags from %s", r2.Url)
+	}
+}
+
+func TestFetchTagsOnRealRepos(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -83,43 +164,43 @@ func TestFilterTags(t *testing.T) {
 	var o fetchOpts
 	o.ReleaseAssets = []string{"magic.rb", "wizardry.py", "sourcery.go"}
 
-	allAssets := []GitHubReleaseAsset {
+	allAssets := []GitHubReleaseAsset{
 		{1, "irrelevant-for-this", "magic.rb"},
 		{2, "irrelevant-for-this", "wizardry.py"},
 		{3, "irrelevant-for-this", "sourcery.go"},
 	}
 
-	missingAsset := []GitHubReleaseAsset {
+	missingAsset := []GitHubReleaseAsset{
 		{1, "irrelevant-for-this", "magic.rb"},
 		{2, "irrelevant-for-this", "sourcery.go"},
 	}
 
-	wrongAsset := []GitHubReleaseAsset {
+	wrongAsset := []GitHubReleaseAsset{
 		{1, "irrelevant-for-this", "magic.rb"},
 		{2, "irrelevant-for-this", "magic.c"},
 		{2, "irrelevant-for-this", "magic.h"},
 	}
 
-	respAllValid := []GitHubReleaseApiResponse {
-		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets },
-		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets },
-		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets },
+	respAllValid := []GitHubReleaseApiResponse{
+		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets},
+		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets},
+		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets},
 	}
 
-	respAllPrerelease := []GitHubReleaseApiResponse {
-		{1, "irrelevant-for-this", "MagicFoo1", true, "v1.0.0", allAssets },
-		{2, "irrelevant-for-this", "MagicFoo2", true, "v2.0.0", allAssets },
-		{3, "irrelevant-for-this", "MagicFoo3", true, "v3.0.0", allAssets },
+	respAllPrerelease := []GitHubReleaseApiResponse{
+		{1, "irrelevant-for-this", "MagicFoo1", true, "v1.0.0", allAssets},
+		{2, "irrelevant-for-this", "MagicFoo2", true, "v2.0.0", allAssets},
+		{3, "irrelevant-for-this", "MagicFoo3", true, "v3.0.0", allAssets},
 	}
 
-	respTooFewAssets := []GitHubReleaseApiResponse {
-		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets },
-		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", missingAsset },
-		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets },
+	respTooFewAssets := []GitHubReleaseApiResponse{
+		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets},
+		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", missingAsset},
+		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", allAssets},
 	}
 
-	respWrongAsset := []GitHubReleaseApiResponse {
-		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets },
+	respWrongAsset := []GitHubReleaseApiResponse{
+		{1, "irrelevant-for-this", "MagicFoo1", false, "v1.0.0", allAssets},
 		{2, "irrelevant-for-this", "MagicFoo2", false, "v2.0.0", allAssets},
 		{3, "irrelevant-for-this", "MagicFoo3", false, "v3.0.0", wrongAsset},
 	}
@@ -127,17 +208,17 @@ func TestFilterTags(t *testing.T) {
 	cases := []struct {
 		resps  []GitHubReleaseApiResponse
 		result []string
-	} {
-		{respAllValid, []string{"v1.0.0","v2.0.0","v3.0.0"}},
+	}{
+		{respAllValid, []string{"v1.0.0", "v2.0.0", "v3.0.0"}},
 		{respAllPrerelease, nil},
-		{respTooFewAssets, []string{"v1.0.0","v3.0.0"}},
-		{respWrongAsset, []string{"v1.0.0","v2.0.0"}},
+		{respTooFewAssets, []string{"v1.0.0", "v3.0.0"}},
+		{respWrongAsset, []string{"v1.0.0", "v2.0.0"}},
 	}
 
 	for _, tc := range cases {
 		tags := o.filterTags(tc.resps)
-		if ! reflect.DeepEqual(tags, tc.result) {
-			t.Fatalf("tags string did not match for %#v\n\tGot %#v",tc, tags)
+		if !reflect.DeepEqual(tags, tc.result) {
+			t.Fatalf("tags string did not match for %#v\n\tGot %#v", tc, tags)
 		}
 	}
 
@@ -375,6 +456,12 @@ func apiStub() *httptest.Server {
 				}
 				switch r.RequestURI {
 
+				case "/repos/has/no/tags?per_page=100&page=1":
+					resp = apiNoTags
+
+				case "/repos/has/no/releases?per_page=100&page=1":
+					resp = apiNoReleases
+
 				case "/repos/foo/bar/tags?per_page=100&page=1":
 					w.Header().Set("Link", apiTagsPage1Link)
 					resp = apiTagsPage1
@@ -390,6 +477,14 @@ func apiStub() *httptest.Server {
 				case "/repos/foo/bar/releases?per_page=100&page=2":
 					w.Header().Set("Link", relsPage2Link)
 					resp = relsPage2
+
+				case "/repos/sna/fu/releases?per_page=100&page=1":
+					w.Header().Set("Link", noValidRelsPage1Link)
+					resp = noValidRelsPage1
+
+				case "/repos/sna/fu/releases?per_page=100&page=2":
+					w.Header().Set("Link", noValidRelsPage2Link)
+					resp = noValidRelsPage2
 
 				case "/fail/twice":
 					if counter == 2 {
