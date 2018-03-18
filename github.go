@@ -36,10 +36,10 @@ type headers map[string]string
 // GitHubCommit {}:
 // A specific git commit.
 type GitHubCommit struct {
-	Repo      repo // The GitHub repo where this release lives
-	GitTag    string     // The specific git tag for this release
-	branch    string     // If specified, will find HEAD commit
-	commitSha string     // Specific sha
+	Repo      repo   // The GitHub repo where this release lives
+	GitTag    string // The specific git tag for this release
+	branch    string // If specified, will find HEAD commit
+	commitSha string // Specific sha
 }
 
 // GitHubTagsApiResponse {}:

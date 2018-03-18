@@ -32,7 +32,7 @@ type fetchOpts struct {
 	ReleaseAssets []string
 	unpack        bool
 	verbose       bool
-	gpgPubKey  string
+	gpgPubKey     string
 	DownloadDir   string
 }
 
