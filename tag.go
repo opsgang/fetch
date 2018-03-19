@@ -34,7 +34,6 @@ func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
 	}
 
 	return
-
 }
 
 func isTagConstraintOrExactTag(tagConstraint string) (bool, string) {
@@ -99,21 +98,21 @@ func bestFitTag(tagConstraint string, tags []string) (string, error) {
 		return latestTag, err
 	}
 
-	latestAcceptableVersion := versions[0]
+	bestFitVersion := versions[0]
 	for _, version := range versions {
-		if constraints.Check(version) && version.GreaterThan(latestAcceptableVersion) {
-			latestAcceptableVersion = version
+		if constraints.Check(version) && version.GreaterThan(bestFitVersion) {
+			bestFitVersion = version
 		}
 	}
 
 	// check constraint against latest acceptable version
-	if !constraints.Check(latestAcceptableVersion) {
+	if !constraints.Check(bestFitVersion) {
 		return latestTag, fmt.Errorf("No tag met constraint.\n")
 	}
 
 	// The tag name may have started with a "v". If so, re-apply that string now
 	for _, originalTagName := range tags {
-		if strings.Contains(originalTagName, latestAcceptableVersion.String()) {
+		if strings.Contains(originalTagName, bestFitVersion.String()) {
 			latestTag = originalTagName
 		}
 	}

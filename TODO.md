@@ -21,13 +21,19 @@ downloaded.
 
 # IN PROGRESS
 
+## end-to-end tests
+
+* remove tests against real repos from \_test.go files
+
+* add a script to run after a successful build that does a few
+    `fetch` runs e.g. against a private repo, using a constraint,
+    for a release, using from-path, using commit, using branch,
+    using gpg. Compare to expected output.
+
 ## refactoring
 * reduce cyclomatic complexity
 * remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
 * exported to unexported
-
-## --verbose
-Suppress output unless this is specified.
 
 ## rename to ghget | glget | bbget (it's shorter)
 
@@ -41,6 +47,9 @@ to me again.
 Still need to rename all vars, methods that use Fetch to use something else.
 
 # DONE
+
+## --verbose
+Suppress output unless this is specified.
 
 ## mocking of api calls
 

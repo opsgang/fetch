@@ -4,7 +4,11 @@ import (
 	"testing"
 )
 
-func TestGetLatestAcceptableTag(t *testing.T) {
+func TestTagToGet(t *testing.T) {
+	t.Parallel()
+}
+
+func TestBestFitTag(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -77,7 +81,7 @@ func TestIsTagConstraintOrExactTag(t *testing.T) {
 	}
 }
 
-func TestGetLatestAcceptableTagOnEmptyConstraint(t *testing.T) {
+func TestBestFitTagOnEmptyConstraint(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -103,7 +107,7 @@ func TestGetLatestAcceptableTagOnEmptyConstraint(t *testing.T) {
 	}
 }
 
-func TestGetLatestAcceptableTagOnMalformedConstraint(t *testing.T) {
+func TestBestFitTagOnMalformedConstraint(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -121,7 +125,7 @@ func TestGetLatestAcceptableTagOnMalformedConstraint(t *testing.T) {
 	}
 }
 
-func TestGetLatestAcceptableTagNoSuchTag(t *testing.T) {
+func TestBestFitTagNoSuchTag(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		tagConstraint string

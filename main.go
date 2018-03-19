@@ -137,7 +137,7 @@ func runFetch(c *cli.Context) (err error) {
 		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
 
-	if err := o.do(r) ; err != nil {
+	if err := o.do(r); err != nil {
 		return err
 	}
 
