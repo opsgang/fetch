@@ -84,9 +84,9 @@ const txtGpgPubKey = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
 `
 
 const txtToken = `
-GitHub Personal Access Token, required to download from a private repo.
+GitHub Personal Access Token, required to download from private repos.
 	Also enables GitHub api's higher rate-limit. It is recommended to set
-	this in the env var GITHUB_TOKEN before invoking ghfetch,
+	this in the env var API_TOKEN before invoking ghfetch,
 	instead of via this commandline option.
 	​
 `

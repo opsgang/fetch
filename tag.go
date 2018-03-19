@@ -15,7 +15,29 @@ Underlying error message:
 %s
 `
 
-func isTagConstraintSpecificTag(tagConstraint string) (bool, string) {
+const NO_VALID_TAG_FOUND = `
+Error occurred computing tag that best satisfies version contraint expression:
+%s
+`
+
+func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
+	specific, tag := isTagConstraintOrExactTag(o.tagConstraint)
+	if !specific {
+		// Find the specific release that matches the latest version constraint
+		latestTag, err := bestFitTag(o.tagConstraint, tags)
+		if err != nil {
+			return tag, fmt.Errorf(NO_VALID_TAG_FOUND, err)
+		}
+		tag = latestTag
+
+		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.tagConstraint, tag)
+	}
+
+	return
+
+}
+
+func isTagConstraintOrExactTag(tagConstraint string) (bool, string) {
 	if len(tagConstraint) > 0 {
 		switch tagConstraint[0] {
 		// Check for a tagConstraint '='
@@ -34,7 +56,7 @@ func isTagConstraintSpecificTag(tagConstraint string) (bool, string) {
 	return false, tagConstraint
 }
 
-func getLatestAcceptableTag(tagConstraint string, tags []string) (string, error) {
+func bestFitTag(tagConstraint string, tags []string) (string, error) {
 	var latestTag string
 
 	if len(tags) == 0 {

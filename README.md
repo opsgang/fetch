@@ -66,11 +66,10 @@ The supported options are:
 - `--release-asset` (**Optional**): The name of a release asset--that is, a binary uploaded to a [GitHub
   Release](https://help.github.com/articles/creating-releases/)--to download. This option can be specified more than
   once. It only works with the `--tag` option.
-- `--github-oauth-token` (**Optional**): A [GitHub Personal Access
+- `--api-token` (**Optional**): A [GitHub Personal Access
   Token](https://help.github.com/articles/creating-an-access-token-for-command-line-use/). Required if you're
-  downloading from private GitHub repos. **NOTE:** fetch will also look for this token using the `GITHUB_OAUTH_TOKEN`
-  environment variable, which we recommend using instead of the command line option to ensure the token doesn't get
-  saved in bash history.
+  downloading from private GitHub repos. **NOTE:** fetch will also look for this token using the `API_TOKEN` or `API_OAUTH_TOKEN`
+  env var, which we recommend using instead of the command line option to ensure the token doesn't get saved in bash history.
 
 The supported arguments are:
 

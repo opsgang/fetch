@@ -174,7 +174,7 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 }
 
 // Fetch all tags from the given GitHub repo
-func FetchTags(r repo) ([]string, error) {
+func fetchTags(r repo) ([]string, error) {
 	var tagsList []string
 
 	url := createGitHubRepoUrlForPath(r, "tags")

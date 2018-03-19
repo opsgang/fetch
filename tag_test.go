@@ -30,9 +30,9 @@ func TestGetLatestAcceptableTag(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tag, err := getLatestAcceptableTag(tc.tagConstraint, tc.tags)
+		tag, err := bestFitTag(tc.tagConstraint, tc.tags)
 		if err != nil {
-			t.Fatalf("Failed on call to getLatestAcceptableTag: %s", err)
+			t.Fatalf("Failed on call to bestFitTag: %s", err)
 		}
 
 		if tag != tc.expectedTag {
@@ -41,13 +41,13 @@ func TestGetLatestAcceptableTag(t *testing.T) {
 	}
 }
 
-func TestIsTagConstraintSpecificTag(t *testing.T) {
+func TestIsTagConstraintOrExactTag(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
 		tagConstraint string
 		desiredTag    string
-		specific      bool
+		exact         bool
 	}{
 		{"1.0.7", "1.0.7", true},
 		{" 1.0.7	 ", "1.0.7", true},
@@ -67,9 +67,9 @@ func TestIsTagConstraintSpecificTag(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		specific, desiredTag := isTagConstraintSpecificTag(tc.tagConstraint)
-		if specific != tc.specific {
-			t.Fatalf("Given constraint: \"%s\", expected %t, but received %t", tc.tagConstraint, tc.specific, specific)
+		exact, desiredTag := isTagConstraintOrExactTag(tc.tagConstraint)
+		if exact != tc.exact {
+			t.Fatalf("Given constraint: \"%s\", expected %t, but received %t", tc.tagConstraint, tc.exact, exact)
 		}
 		if desiredTag != tc.desiredTag {
 			t.Fatalf("Given constraint: \"%s\", expected result tag: \"%s\", but received \"%s\"", tc.tagConstraint, tc.desiredTag, desiredTag)
@@ -92,9 +92,9 @@ func TestGetLatestAcceptableTagOnEmptyConstraint(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tag, err := getLatestAcceptableTag(tc.tagConstraint, tc.tags)
+		tag, err := bestFitTag(tc.tagConstraint, tc.tags)
 		if err != nil {
-			t.Fatalf("Failed on call to getLatestAcceptableTag: %s", err)
+			t.Fatalf("Failed on call to bestFitTag: %s", err)
 		}
 
 		if tag != tc.expectedTag {
@@ -114,7 +114,7 @@ func TestGetLatestAcceptableTagOnMalformedConstraint(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		_, err := getLatestAcceptableTag(tc.tagConstraint, []string{"v0.0.1"})
+		_, err := bestFitTag(tc.tagConstraint, []string{"v0.0.1"})
 		if err == nil {
 			t.Fatalf("Expected malformed constraint error, but received nothing.")
 		}
@@ -132,7 +132,7 @@ func TestGetLatestAcceptableTagNoSuchTag(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		_, err := getLatestAcceptableTag(tc.tagConstraint, tc.tags)
+		_, err := bestFitTag(tc.tagConstraint, tc.tags)
 		if err == nil {
 			t.Fatalf("Expected 'Tag does not exist' but received nothing")
 		}

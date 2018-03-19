@@ -4,15 +4,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/urfave/cli"
 	"os"
 	"path"
-)
 
-//
-const NO_VALID_TAG_FOUND = `
-Error occurred while computing latest tag that satisfies version contraint expression: %s
-`
+	"github.com/urfave/cli"
+)
 
 // VERSION : set at build time with -ldflags
 var VERSION string
@@ -37,7 +33,6 @@ type fetchOpts struct {
 
 // releaseDl : data to complete download of a release asset
 type releaseDl struct {
-	*relAsset
 	name      string
 	localPath string
 	tag       string
@@ -48,7 +43,7 @@ const optRepo = "repo"
 const optCommit = "commit"
 const optBranch = "branch"
 const optTag = "tag"
-const optApiToken = "oauth-token"
+const optApiToken = "api-token"
 const optFromPath = "from-path"
 const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
@@ -106,7 +101,7 @@ func main() {
 		cli.StringFlag{
 			Name:   optApiToken,
 			Usage:  txtToken,
-			EnvVar: "GITHUB_TOKEN,GITHUB_OAUTH_TOKEN",
+			EnvVar: "API_TOKEN,API_OAUTH_TOKEN,GITHUB_TOKEN,GITHUB_OAUTH_TOKEN",
 		},
 	}
 
@@ -133,7 +128,7 @@ func runFetch(c *cli.Context) (err error) {
 	}
 
 	if o.apiToken == "" {
-		fmt.Println("WARNING: no github token provided - severely rate-limited by GitHub API")
+		fmt.Println("WARNING: no api token provided - rate-limited and can't access private repos")
 	}
 
 	// Prepare the vars we'll need to download
@@ -141,43 +136,8 @@ func runFetch(c *cli.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
-	// Get the tags for the given repo
-	// or tags for actual releases if getting release assets.
-	var tags []string
-	if len(o.relAssets) == 0 {
-		tags, err = FetchTags(r)
-	} else {
-		tags, err = o.fetchReleaseTags(r)
-	}
-	if err != nil {
-		return fmt.Errorf("Error occurred while getting tags from GitHub repo: %s", err)
-	}
 
-	specific, desiredTag := isTagConstraintSpecificTag(o.tagConstraint)
-	if !specific {
-		// Find the specific release that matches the latest version constraint
-		latestTag, err := getLatestAcceptableTag(o.tagConstraint, tags)
-		if err != nil {
-			return fmt.Errorf(NO_VALID_TAG_FOUND, err)
-		}
-		desiredTag = latestTag
-
-		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.tagConstraint, desiredTag)
-	}
-
-	// If no release assets or from-paths specified, assume
-	// user wants all files from zipball.
-	if len(o.fromPaths) == 0 && len(o.relAssets) == 0 {
-		o.fromPaths = []string{"/"}
-	}
-
-	// Download any requested source files
-	if err := o.downloadFromPaths(r, desiredTag); err != nil {
-		return err
-	}
-
-	// Download any requested release assets
-	if err := o.downloadReleaseAssets(r, desiredTag); err != nil {
+	if err := o.do(r) ; err != nil {
 		return err
 	}
 
@@ -251,7 +211,7 @@ func (o *fetchOpts) downloadFromPaths(r repo, latestTag string) error {
 
 	// We respect commit Hierarchy: "commitSha > GitTag > branch"
 	// Note that commitSha and branch are empty unless user passed values.
-	// getLatestAcceptableTag() ensures that we have a GitTag value regardless
+	// bestFitTag() ensures that we have a GitTag value regardless
 	// of whether the user passed one or not.
 	// So if the user specified nothing, we'd download the latest valid tag.
 	c := commit{
@@ -292,8 +252,8 @@ func (o *fetchOpts) downloadFromPaths(r repo, latestTag string) error {
 
 // newAsset ():
 //
-func newAsset(name string, path string, asset *relAsset, tag string, verbose bool) releaseDl {
-	return releaseDl{asset, name, path, tag, verbose}
+func newAsset(name string, path string, tag string, verbose bool) releaseDl {
+	return releaseDl{name, path, tag, verbose}
 }
 
 // downloadReleaseAssetts ():
@@ -319,7 +279,7 @@ func (o *fetchOpts) downloadReleaseAssets(r repo, tag string) error {
 		}
 
 		assetPath := path.Join(o.destDir, asset.Name)
-		a := newAsset(assetName, assetPath, asset, tag, o.verbose)
+		a := newAsset(assetName, assetPath, tag, o.verbose)
 		fmt.Printf("Downloading release asset %s to %s\n", asset.Name, assetPath)
 		if err := FetchReleaseAsset(r, asset.Id, assetPath); err != nil {
 			return err

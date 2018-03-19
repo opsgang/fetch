@@ -99,7 +99,7 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 		Api:   s.URL,
 	}
 
-	tags, err := FetchTags(r1)
+	tags, err := fetchTags(r1)
 	if err != nil {
 		t.Fatalf("... should not have erred getting stubbed tags for %s", r1.Url)
 	} else if !reflect.DeepEqual(tags, apiTagsExpected) {
@@ -108,7 +108,7 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 
 	// test when no tags returned (empty json array)
 	// ... get results from the stub server for has/no
-	tags, err = FetchTags(r2)
+	tags, err = fetchTags(r2)
 	if tags != nil {
 		t.Fatalf("should have got no go tags back for this test: got %#v", tags)
 	}
@@ -135,7 +135,7 @@ func TestFetchTagsOnRealRepos(t *testing.T) {
 
 	for _, tc := range cases {
 		r, err := urlToGitHubRepo(tc.repoUrl, tc.gitHubOAuthToken)
-		tags, err := FetchTags(r)
+		tags, err := fetchTags(r)
 		if err != nil {
 			t.Fatalf("error fetching tags: %s", err)
 		}
