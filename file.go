@@ -26,17 +26,15 @@ Failed to download file at the url %s.
 Expected HTTP Response's "Content-Type" header to be "application/zip", but was "%s"
 `
 
-// Download the zip file at the given URL to a temporary local directory.
-// Returns the absolute path to the downloaded zip file.
-// IMPORTANT: You must call "defer os.RemoveAll(dir)" in the calling function when done with the downloaded zip file!
-func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, int, error) {
+// getSrcZip ():
+// Download the zip file from url to temp dir.
+// Returns the absolute path to zip, http resp code, and any err.
+func getSrcZip(c commit, gitHubToken string) (string, int, error) {
 
 	var zipFilePath string
 	var rStatus int
 
-	// Create a temp directory
-	// Note that ioutil.TempDir has a peculiar interface. We need not specify any meaningful values to achieve our
-	// goal of getting a temporary directory.
+	// temp dir used for downloading and unpacking zip before copying files.
 	tempDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return zipFilePath, rStatus, err
@@ -44,7 +42,7 @@ func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, int, erro
 
 	// Download the zip file, possibly using the GitHub oAuth Token
 	httpClient := &http.Client{}
-	req, err := gitHubZipRequest(gitHubCommit, gitHubToken)
+	req, err := gitHubZipRequest(c, gitHubToken)
 	if err != nil {
 		return zipFilePath, rStatus, err
 	}
@@ -79,7 +77,8 @@ func getSrcZip(gitHubCommit GitHubCommit, gitHubToken string) (string, int, erro
 	return zipFilePath, rStatus, err
 }
 
-// Decompress the file at zipFileAbsPath and move only those files under filesToExtractFromZipPath to localPath
+// extractFiles ():
+// Decompress zip and filter source for files indicated by --from-path
 func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) error {
 
 	// Open the zip file for reading.
@@ -97,8 +96,8 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	// By convention, the first file in the zip file is the top-level directory
 	pathPrefix := r.File[0].Name
 
-	// Add the path from which we will extract files to the path prefix so we can exclude the appropriate files
-	// unless you only want a single file from the zip ...
+	// Add the path from which we will extract files to, the path prefix so we can exclude
+	// the appropriate files unless only a single file was requested.
 	pathPrefix = filepath.Join(pathPrefix, filesToExtractFromZipPath)
 
 	os.MkdirAll(localPath, 0755)
@@ -109,16 +108,15 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 		// If the given file is in the filesToExtractFromZipPath, proceed
 		if strings.Index(f.Name, pathPrefix) == 0 {
 
-			// When source-path is a directory, we want to drop
+			// When from-path is a directory, we want to drop
 			// the contents in to the local download dir with out
 			// the source-path portion of the path ...
 			trimmedName := strings.TrimPrefix(f.Name, pathPrefix)
-			// ... but if --source-path is a single file the file name and
+			// ... but if --from-path is a single file the file name and
 			// path prefix are the same so we want just the base file name.
 			if f.Name == pathPrefix {
 				trimmedName = filepath.Base(f.Name)
 			}
-			// when source-path is a single file, the trimmed name is empty.
 			if f.FileInfo().IsDir() {
 				// Create a directory
 				os.MkdirAll(filepath.Join(localPath, trimmedName), 0777)
@@ -147,7 +145,7 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 }
 
 // doUnpack ():
-// ... prefixed 'do' as field 'unpack' already exists in fetchOpts{}
+// ... func name prefixed 'do' as field 'unpack' already exists in fetchOpts{}
 func (o *fetchOpts) doUnpack(sourceFileName string) (err error) {
 	fileExt, err := detectFileType(sourceFileName)
 	if err != nil {
@@ -197,7 +195,7 @@ func (o *fetchOpts) gunzip(sourceFileName string) error {
 	}
 	defer archive.Close()
 
-	// need to provide a full path for location of ungzipped file
+	// need to provide a full path for location of gunzipped file
 	gunZipped := filepath.Join(destDir, fmt.Sprintf("%s.gunzipped", filepath.Base(sourceFileName)))
 
 	if o.verbose {
@@ -291,17 +289,17 @@ func (o *fetchOpts) untar(sourceFileName string) error {
 
 // gitHubZipRequest : returns HTTP request for zipball
 // Sha trumps branch which trumps tag.
-func gitHubZipRequest(gitHubCommit GitHubCommit, gitHubToken string) (*http.Request, error) {
+func gitHubZipRequest(c commit, gitHubToken string) (*http.Request, error) {
 	var request *http.Request
 
 	// This represents either a commit, branch, or git tag
 	var gitRef string
-	if gitHubCommit.commitSha != "" {
-		gitRef = gitHubCommit.commitSha
-	} else if gitHubCommit.branch != "" {
-		gitRef = gitHubCommit.branch
-	} else if gitHubCommit.GitTag != "" {
-		gitRef = gitHubCommit.GitTag
+	if c.commitSha != "" {
+		gitRef = c.commitSha
+	} else if c.branch != "" {
+		gitRef = c.branch
+	} else if c.GitTag != "" {
+		gitRef = c.GitTag
 	} else {
 		msg := "Neither a commitSha nor a GitTag nor a branch were specified " +
 			"so impossible to identify a specific commit to download."
@@ -310,8 +308,8 @@ func gitHubZipRequest(gitHubCommit GitHubCommit, gitHubToken string) (*http.Requ
 
 	url := fmt.Sprintf(
 		"https://api.github.com/repos/%s/%s/zipball/%s",
-		gitHubCommit.Repo.Owner,
-		gitHubCommit.Repo.Name,
+		c.Repo.Owner,
+		c.Repo.Name,
 		gitRef,
 	)
 

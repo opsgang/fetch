@@ -164,18 +164,18 @@ func TestFilterTags(t *testing.T) {
 	var o fetchOpts
 	o.relAssets = []string{"magic.rb", "wizardry.py", "sourcery.go"}
 
-	allAssets := []GitHubReleaseAsset{
+	allAssets := []relAsset{
 		{1, "irrelevant-for-this", "magic.rb"},
 		{2, "irrelevant-for-this", "wizardry.py"},
 		{3, "irrelevant-for-this", "sourcery.go"},
 	}
 
-	missingAsset := []GitHubReleaseAsset{
+	missingAsset := []relAsset{
 		{1, "irrelevant-for-this", "magic.rb"},
 		{2, "irrelevant-for-this", "sourcery.go"},
 	}
 
-	wrongAsset := []GitHubReleaseAsset{
+	wrongAsset := []relAsset{
 		{1, "irrelevant-for-this", "magic.rb"},
 		{2, "irrelevant-for-this", "magic.c"},
 		{2, "irrelevant-for-this", "magic.h"},
@@ -291,7 +291,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 
 	token := os.Getenv("GITHUB_OAUTH_TOKEN")
 
-	expectedReleaseAsset := GitHubReleaseAsset{
+	expectedReleaseAsset := relAsset{
 		Id:   5354782,
 		Url:  "https://api.github.com/repos/opsgang/fetch/releases/assets/5354782",
 		Name: "fetch.tgz",
@@ -303,7 +303,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 		Name:       "static binary for amd64 linux",
 		Prerelease: false,
 		Tag_name:   "v0.1.1",
-		Assets:     append([]GitHubReleaseAsset{}, expectedReleaseAsset),
+		Assets:     append([]relAsset{}, expectedReleaseAsset),
 	}
 
 	cases := []struct {

@@ -26,7 +26,7 @@ type fetchOpts struct {
 	commitSha     string
 	branch        string
 	tagConstraint string
-	githubToken   string
+	apiToken      string
 	fromPaths     []string
 	relAssets     []string
 	unpack        bool
@@ -37,7 +37,7 @@ type fetchOpts struct {
 
 // releaseDl : data to complete download of a release asset
 type releaseDl struct {
-	*GitHubReleaseAsset
+	*relAsset
 	name      string
 	localPath string
 	tag       string
@@ -48,7 +48,7 @@ const optRepo = "repo"
 const optCommit = "commit"
 const optBranch = "branch"
 const optTag = "tag"
-const optGithubToken = "oauth-token"
+const optApiToken = "oauth-token"
 const optFromPath = "from-path"
 const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
@@ -104,7 +104,7 @@ func main() {
 			Usage: txtGpgPubKey,
 		},
 		cli.StringFlag{
-			Name:   optGithubToken,
+			Name:   optApiToken,
 			Usage:  txtToken,
 			EnvVar: "GITHUB_TOKEN,GITHUB_OAUTH_TOKEN",
 		},
@@ -132,12 +132,12 @@ func runFetch(c *cli.Context) (err error) {
 		return err
 	}
 
-	if o.githubToken == "" {
-		fmt.Println("WARNING: no github token provided - will be severely rate-limited by GitHub API")
+	if o.apiToken == "" {
+		fmt.Println("WARNING: no github token provided - severely rate-limited by GitHub API")
 	}
 
 	// Prepare the vars we'll need to download
-	r, err := urlToGitHubRepo(o.repoUrl, o.githubToken)
+	r, err := urlToGitHubRepo(o.repoUrl, o.apiToken)
 	if err != nil {
 		return fmt.Errorf("Error occurred while parsing GitHub URL: %s", err)
 	}
@@ -192,7 +192,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 		commitSha:     c.String(optCommit),
 		branch:        c.String(optBranch),
 		tagConstraint: c.String(optTag),
-		githubToken:   c.String(optGithubToken),
+		apiToken:      c.String(optApiToken),
 		fromPaths:     c.StringSlice(optFromPath),
 		relAssets:     c.StringSlice(optReleaseAsset),
 		unpack:        c.Bool(optUnpack),
@@ -244,35 +244,35 @@ func validateOptions(o fetchOpts) error {
 }
 
 // Download the specified source files from the given repo
-func (o *fetchOpts) downloadFromPaths(githubRepo repo, latestTag string) error {
+func (o *fetchOpts) downloadFromPaths(r repo, latestTag string) error {
 	if len(o.fromPaths) == 0 {
 		return nil
 	}
 
-	// We respect GitHubCommit Hierarchy: "commitSha > GitTag > branch"
+	// We respect commit Hierarchy: "commitSha > GitTag > branch"
 	// Note that commitSha and branch are empty unless user passed values.
 	// getLatestAcceptableTag() ensures that we have a GitTag value regardless
 	// of whether the user passed one or not.
 	// So if the user specified nothing, we'd download the latest valid tag.
-	gitHubCommit := GitHubCommit{
-		Repo:      githubRepo,
+	c := commit{
+		Repo:      r,
 		GitTag:    latestTag,
 		branch:    o.branch,
 		commitSha: o.commitSha,
 	}
 
 	// Download that release as a .zip file
-	if gitHubCommit.commitSha != "" {
-		fmt.Printf("Downloading git commit \"%s\" of %s ...\n", gitHubCommit.commitSha, githubRepo.Url)
-	} else if gitHubCommit.branch != "" {
-		fmt.Printf("Downloading latest commit from branch \"%s\" of %s ...\n", gitHubCommit.branch, githubRepo.Url)
-	} else if gitHubCommit.GitTag != "" {
-		fmt.Printf("Downloading tag \"%s\" of %s ...\n", latestTag, githubRepo.Url)
+	if c.commitSha != "" {
+		fmt.Printf("Downloading git commit \"%s\" of %s ...\n", c.commitSha, r.Url)
+	} else if c.branch != "" {
+		fmt.Printf("Downloading latest commit from branch \"%s\" of %s ...\n", c.branch, r.Url)
+	} else if c.GitTag != "" {
+		fmt.Printf("Downloading tag \"%s\" of %s ...\n", latestTag, r.Url)
 	} else {
 		return fmt.Errorf("The commit sha, tag, and branch name are all empty.")
 	}
 
-	localZipFilePath, _, err := getSrcZip(gitHubCommit, githubRepo.Token)
+	localZipFilePath, _, err := getSrcZip(c, r.Token)
 	if err != nil {
 		return fmt.Errorf("Error occurred while downloading zip file from GitHub repo: %s", err)
 	}
@@ -282,7 +282,7 @@ func (o *fetchOpts) downloadFromPaths(githubRepo repo, latestTag string) error {
 	for _, fromPath := range o.fromPaths {
 		fmt.Printf("Extracting files from <repo>%s to %s ...\n", fromPath, o.destDir)
 		if err := extractFiles(localZipFilePath, fromPath, o.destDir); err != nil {
-			return fmt.Errorf("Error occurred while extracting files from GitHub zip file: %s", err.Error())
+			return fmt.Errorf("Error occurred while extracting files from GitHub zip file: %s", err)
 		}
 	}
 
@@ -290,12 +290,15 @@ func (o *fetchOpts) downloadFromPaths(githubRepo repo, latestTag string) error {
 	return nil
 }
 
-// Download the specified binary files that were uploaded as release assets to the specified GitHub release
-
-func newAsset(name string, path string, asset *GitHubReleaseAsset, tag string, verbose bool) releaseDl {
+// newAsset ():
+//
+func newAsset(name string, path string, asset *relAsset, tag string, verbose bool) releaseDl {
 	return releaseDl{asset, name, path, tag, verbose}
 }
 
+// downloadReleaseAssetts ():
+// Download the user-defined release attachments.
+// Also performs GPG check if needed.
 func (o *fetchOpts) downloadReleaseAssets(r repo, tag string) error {
 	if len(o.relAssets) == 0 {
 		return nil
@@ -369,7 +372,7 @@ func (a *releaseDl) verifyGpg(gpgKey string, rel release, gr repo) error {
 	return err
 }
 
-func findAssetInRelease(assetName string, release release) *GitHubReleaseAsset {
+func findAssetInRelease(assetName string, release release) *relAsset {
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
 			return &asset
@@ -379,7 +382,7 @@ func findAssetInRelease(assetName string, release release) *GitHubReleaseAsset {
 	return nil
 }
 
-func findAscInRelease(assetName string, release release) *GitHubReleaseAsset {
+func findAscInRelease(assetName string, release release) *relAsset {
 	for _, asset := range release.Assets {
 		asc := fmt.Sprintf("%s.asc", assetName)
 		ascTxt := fmt.Sprintf("%s.asc.txt", assetName)

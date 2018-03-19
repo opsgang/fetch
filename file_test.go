@@ -22,17 +22,17 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		repoOwner   string
-		repoName    string
-		gitTag      string
-		githubToken string
+		repoOwner string
+		repoName  string
+		gitTag    string
+		apiToken  string
 	}{
 		{"opsgang", "fetch", "v0.1.1", ""},
 		{"opsgang", "fetch", "v0.0.2", os.Getenv("GITHUB_OAUTH_TOKEN")},
 	}
 
 	for _, tc := range cases {
-		gitHubCommit := GitHubCommit{
+		c := commit{
 			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
@@ -40,7 +40,7 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 			GitTag: tc.gitTag,
 		}
 
-		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(c, tc.apiToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -56,17 +56,17 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		repoOwner   string
-		repoName    string
-		branch      string
-		githubToken string
+		repoOwner string
+		repoName  string
+		branch    string
+		apiToken  string
 	}{
 		{"opsgang", "fetch", "enable-fetch-to-pull-from-branch", ""},
 		{"opsgang", "fetch", "enable-fetch-to-pull-from-branch", os.Getenv("GITHUB_OAUTH_TOKEN")},
 	}
 
 	for _, tc := range cases {
-		gitHubCommit := GitHubCommit{
+		c := commit{
 			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
@@ -74,7 +74,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 			branch: tc.branch,
 		}
 
-		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(c, tc.apiToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -90,16 +90,16 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		repoOwner   string
-		repoName    string
-		branch      string
-		githubToken string
+		repoOwner string
+		repoName  string
+		branch    string
+		apiToken  string
 	}{
 		{"opsgang", "fetch", "branch-that-doesnt-exist", ""},
 	}
 
 	for _, tc := range cases {
-		gitHubCommit := GitHubCommit{
+		c := commit{
 			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
@@ -107,7 +107,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 			branch: tc.branch,
 		}
 
-		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(c, tc.apiToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
 			t.Fatalf("Expected that attempt to download repo %s/%s for branch \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.branch)
@@ -119,10 +119,10 @@ func TestDownloadGitCommitFile(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		repoOwner   string
-		repoName    string
-		commitSha   string
-		githubToken string
+		repoOwner string
+		repoName  string
+		commitSha string
+		apiToken  string
 	}{
 		{"opsgang", "fetch", "f5790b465750498bf781169bae74747a6a7b536e", ""},
 		{"opsgang", "fetch", "9815bb39119e66c89d5f1c3abeb9d980993ef0a4", ""},
@@ -130,7 +130,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		gitHubCommit := GitHubCommit{
+		c := commit{
 			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
@@ -138,7 +138,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 			commitSha: tc.commitSha,
 		}
 
-		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(c, tc.apiToken)
 		defer os.RemoveAll(zipFilePath)
 		if err != nil {
 			t.Fatalf("Failed to download file: %s", err)
@@ -154,10 +154,10 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		repoOwner   string
-		repoName    string
-		commitSha   string
-		githubToken string
+		repoOwner string
+		repoName  string
+		commitSha string
+		apiToken  string
 	}{
 		{"opsgang", "fetch", "hello-world", ""},
 		{"opsgang", "fetch", "i-am-a-non-existent-commit", ""},
@@ -168,7 +168,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		gitHubCommit := GitHubCommit{
+		c := commit{
 			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
@@ -176,7 +176,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 			commitSha: tc.commitSha,
 		}
 
-		zipFilePath, _, err := getSrcZip(gitHubCommit, tc.githubToken)
+		zipFilePath, _, err := getSrcZip(c, tc.apiToken)
 		defer os.RemoveAll(zipFilePath)
 		if err == nil {
 			t.Fatalf("Expected that attempt to download repo %s/%s at commmit sha \"%s\" would fail, but received no error.", tc.repoOwner, tc.repoName, tc.commitSha)
@@ -188,16 +188,16 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		repoOwner   string
-		repoName    string
-		gitTag      string
-		githubToken string
+		repoOwner string
+		repoName  string
+		gitTag    string
+		apiToken  string
 	}{
 		{"https://github.com/opsgang/fetch/archive/does-not-exist.zip", "MyNameIsWhat", "x.y.z", ""},
 	}
 
 	for _, tc := range cases {
-		gitHubCommit := GitHubCommit{
+		c := commit{
 			Repo: repo{
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
@@ -205,7 +205,7 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 			GitTag: tc.gitTag,
 		}
 
-		_, status, err := getSrcZip(gitHubCommit, tc.githubToken)
+		_, status, err := getSrcZip(c, tc.apiToken)
 		if err == nil && status != 500 {
 			t.Fatalf("Expected error for bad repo values: %s/%s:%s", tc.repoOwner, tc.repoName, tc.gitTag)
 		}

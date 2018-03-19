@@ -33,25 +33,25 @@ type headers map[string]string
 // * Example: GitTag and commitSha are both specified; use the commitSha
 // * Example: branch alone is specified; use branch
 
-// GitHubCommit {}:
+// commit {}:
 // A specific git commit.
-type GitHubCommit struct {
+type commit struct {
 	Repo      repo   // The GitHub repo where this release lives
 	GitTag    string // The specific git tag for this release
 	branch    string // If specified, will find HEAD commit
 	commitSha string // Specific sha
 }
 
-// GitHubTagsApiResponse {}:
-type GitHubTagsApiResponse struct {
+// tag {}:
+type tag struct {
 	Name       string // The tag name
 	ZipBallUrl string // The URL where a ZIP of the release can be downloaded
 	TarballUrl string // The URL where a Tarball of the release can be downloaded
-	Commit     GitHubTagsCommitApiResponse
+	Commit     taggedCommit
 }
 
-// GitHubTagsCommitApiResponse {}:
-type GitHubTagsCommitApiResponse struct {
+// taggedCommit {}:
+type taggedCommit struct {
 	Sha string // The SHA of the commit associated with a given tag
 	Url string // The URL to get more commit info
 }
@@ -64,12 +64,12 @@ type release struct {
 	Name       string // release name (not tag)
 	Prerelease bool   // not published?
 	Tag_name   string // the associated git tag
-	Assets     []GitHubReleaseAsset
+	Assets     []relAsset
 }
 
-// GitHubReleaseAsset {}: (release attachment)
+// relAsset {}: (release attachment)
 // https://developer.github.com/v3/repos/releases/#get-a-release-by-tag-name
-type GitHubReleaseAsset struct {
+type relAsset struct {
 	Id   int    // asset id (not release id)
 	Url  string // url to retrieve asset
 	Name string // asset name
@@ -175,53 +175,53 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 
 // Fetch all tags from the given GitHub repo
 func FetchTags(r repo) ([]string, error) {
-	var tags []string
+	var tagsList []string
 
 	url := createGitHubRepoUrlForPath(r, "tags")
 	resps, err := r.callGitHubApi(url, headers{})
 	if err != nil {
-		return tags, err
+		return tagsList, err
 	}
 
 	for _, resp := range resps {
-		// Convert the response body to a byte array
+		// ... response to bytes for unmarshalling
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
 		jsonResp := buf.Bytes()
 
-		// Extract the JSON into our array of gitHubTagsCommitApiResponse's
-		var tagsResp []GitHubTagsApiResponse
-		if err := json.Unmarshal(jsonResp, &tagsResp); err != nil {
-			return tags, err
+		// ... unmarshall resp to structs
+		var tags []tag
+		if err := json.Unmarshal(jsonResp, &tags); err != nil {
+			return tagsList, err
 		}
 
-		for _, tag := range tagsResp {
-			tags = append(tags, tag.Name)
+		for _, tag := range tags {
+			tagsList = append(tagsList, tag.Name)
 		}
 	}
 
-	if len(tags) == 0 {
-		return tags, fmt.Errorf("No tags found from %s", url)
+	if len(tagsList) == 0 {
+		return tagsList, fmt.Errorf("No tags found from %s", url)
 	}
 
-	return tags, err
+	return tagsList, err
 }
 
 // Convert a URL into a repo struct
 func urlToGitHubRepo(url string, token string) (repo, error) {
-	var gitHubRepo repo
+	var r repo
 
 	regex, regexErr := regexp.Compile("https?://(?:www\\.)?github.com/(.+?)/(.+?)(?:$|\\?|#|/)")
 	if regexErr != nil {
-		return gitHubRepo, fmt.Errorf("GitHub Repo URL %s is malformed.", url)
+		return r, fmt.Errorf("GitHub Repo URL %s is malformed.", url)
 	}
 
 	matches := regex.FindStringSubmatch(url)
 	if len(matches) != 3 {
-		return gitHubRepo, fmt.Errorf("GitHub Repo URL %s could not be parsed correctly", url)
+		return r, fmt.Errorf("GitHub Repo URL %s could not be parsed correctly", url)
 	}
 
-	gitHubRepo = repo{
+	r = repo{
 		Url:   url,
 		Owner: matches[1],
 		Name:  matches[2],
@@ -229,7 +229,7 @@ func urlToGitHubRepo(url string, token string) (repo, error) {
 		Api:   "https://api.github.com",
 	}
 
-	return gitHubRepo, nil
+	return r, nil
 }
 
 // Download the release asset with the given id and return its body

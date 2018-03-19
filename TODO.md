@@ -1,10 +1,5 @@
 # TODO
 
-## refactoring
-* reduce cyclomatic complexity
-* remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
-* exported to unexported
-
 ## --timeout i
 
 Let user specify net/http timeout (for those larger repos and assets)
@@ -25,6 +20,11 @@ downloaded.
   to latest.
 
 # IN PROGRESS
+
+## refactoring
+* reduce cyclomatic complexity
+* remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
+* exported to unexported
 
 ## --verbose
 Suppress output unless this is specified.
