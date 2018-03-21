@@ -312,9 +312,8 @@ func (o *fetchOpts) untar(sourceFileName string) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			if err := os.Symlink(header.Linkname, path); err != nil {
 				return err
-			} else {
-				continue
 			}
+			continue
 		}
 
 		if info.Mode().IsRegular() {

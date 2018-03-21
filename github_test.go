@@ -296,7 +296,7 @@ func TestGetGitHubReleaseInfo(t *testing.T) {
 		Url:        "https://api.github.com/repos/opsgang/fetch/releases/8471364",
 		Name:       "static binary for amd64 linux",
 		Prerelease: false,
-		Tag_name:   "v0.1.1",
+		TagName:    "v0.1.1",
 		Assets:     append([]relAsset{}, expectedReleaseAsset),
 	}
 

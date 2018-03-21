@@ -418,8 +418,6 @@ func copyFile(src string, dst string) error {
 	if err != nil {
 		return err
 	}
-	if err = ioutil.WriteFile(dst, data, 0644); err != nil {
-		return err
-	}
-	return nil
+	err = ioutil.WriteFile(dst, data, 0644)
+	return err
 }

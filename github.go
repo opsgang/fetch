@@ -63,7 +63,7 @@ type release struct {
 	Url        string // release url
 	Name       string // release name (not tag)
 	Prerelease bool   // not published?
-	Tag_name   string // the associated git tag
+	TagName    string // the associated git tag
 	Assets     []relAsset
 }
 
@@ -133,14 +133,14 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 		// ... skip if prerelease
 		if rel.Prerelease {
 			if o.verbose {
-				fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.Tag_name)
+				fmt.Printf("... ignoring rel tag %s: prerelease.\n", rel.TagName)
 			}
 			continue
 		}
 		// ... skip if release contains fewer assets than number requested
 		if len(rel.Assets) < len(o.relAssets) {
 			if o.verbose {
-				fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.Tag_name)
+				fmt.Printf("... ignoring rel tag %s: not all requested assets.\n", rel.TagName)
 			}
 			continue
 		}
@@ -156,7 +156,7 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 				continue
 			} else {
 				if o.verbose {
-					fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.Tag_name, a)
+					fmt.Printf("... ignoring rel tag %s: %s not attached.\n", rel.TagName, a)
 				}
 				missingAsset = true
 				break
@@ -167,7 +167,7 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 			continue
 		}
 
-		tags = append(tags, rel.Tag_name)
+		tags = append(tags, rel.TagName)
 	}
 
 	return
@@ -232,6 +232,7 @@ func urlToGitHubRepo(url string, token string) (repo, error) {
 	return r, nil
 }
 
+// FetchReleaseAsset ():
 // Download the release asset with the given id and return its body
 func FetchReleaseAsset(r repo, assetId int, destPath string) error {
 
@@ -246,6 +247,7 @@ func FetchReleaseAsset(r repo, assetId int, destPath string) error {
 	return writeResponseToDisk(resp, destPath)
 }
 
+// GetGitHubReleaseInfo ():
 // Get information about the GitHub release with the given tag
 func GetGitHubReleaseInfo(r repo, tag string) (release, error) {
 	release := release{}
