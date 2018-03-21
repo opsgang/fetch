@@ -975,6 +975,8 @@ const apiTagsPage2Link = `
 <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/tags?per_page=100&page=1>; rel="first"
 `
 
+var relTagsExpected = []string{"bad8.7.6.5", "7.6.5", "bad2.3.4.0", "3.4.5"}
+
 var apiTagsExpected = []string{
 	"tag-jin-tries-arbitrary-tag-01",
 	"tag-non-semantic-version-1.0.05.6",
@@ -1139,6 +1141,11 @@ const relsPage1 = `
         "url": "https://api.github.com/repos/sna/fu/releases/assets/7654783",
         "id": 7654783,
         "name": "bar.tgz"
+      },
+      {
+        "url": "https://api.github.com/repos/sna/fu/releases/assets/7654784",
+        "id": 7654783,
+        "name": "packed.tgz"
       }
     ]
   },
@@ -1334,4 +1341,31 @@ const noValidRelsPage1Link = `
 
 const noValidRelsPage2Link = `
 <https://api.github.com/repositories/12345678/releases?per_page=100&page=1>; rel="prev", <https://api.github.com/repositories/12345678/releases?per_page=100&page=1>; rel="first"
+`
+
+const relWithAsset = `
+{
+  "url": "https://api.github.com/repos/sna/fu/releases/7654321",
+  "id": 7654321,
+  "tag_name": "7.6.5",
+  "name": "all good",
+  "prerelease": false,
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/sna/fu/releases/assets/7654782",
+      "id": 7654782,
+      "name": "foo.tgz"
+    },
+    {
+      "url": "https://api.github.com/repos/sna/fu/releases/assets/7654783",
+      "id": 7654783,
+      "name": "bar.tgz"
+    },
+    {
+      "url": "https://api.github.com/repos/sna/fu/releases/assets/7654784",
+      "id": 7654783,
+      "name": "packed.tgz"
+    }
+  ]
+}
 `

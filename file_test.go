@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// Although other tests besides those in this file require this env var, this init() func will cover all tests.
 func init() {
 	if os.Getenv("GITHUB_OAUTH_TOKEN") == "" && os.Getenv("GITHUB_TOKEN") == "" {
 		fmt.Println("ERROR: Before running these tests, set GITHUB_OAUTH_TOKEN or GITHUB_TOKEN.")
@@ -34,6 +33,7 @@ func TestDownloadGitTagZipFile(t *testing.T) {
 	for _, tc := range cases {
 		c := commit{
 			Repo: repo{
+				Api:   "https://api.github.com",
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -68,6 +68,7 @@ func TestDownloadGitBranchZipFile(t *testing.T) {
 	for _, tc := range cases {
 		c := commit{
 			Repo: repo{
+				Api:   "https://api.github.com",
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -101,6 +102,7 @@ func TestDownloadBadGitBranchZipFile(t *testing.T) {
 	for _, tc := range cases {
 		c := commit{
 			Repo: repo{
+				Api:   "https://api.github.com",
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -132,6 +134,7 @@ func TestDownloadGitCommitFile(t *testing.T) {
 	for _, tc := range cases {
 		c := commit{
 			Repo: repo{
+				Api:   "https://api.github.com",
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -170,6 +173,7 @@ func TestDownloadBadGitCommitFile(t *testing.T) {
 	for _, tc := range cases {
 		c := commit{
 			Repo: repo{
+				Api:   "https://api.github.com",
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},
@@ -199,6 +203,7 @@ func TestDownloadZipFileWithBadRepoValues(t *testing.T) {
 	for _, tc := range cases {
 		c := commit{
 			Repo: repo{
+				Api:   "https://api.github.com",
 				Owner: tc.repoOwner,
 				Name:  tc.repoName,
 			},

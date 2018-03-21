@@ -1,5 +1,8 @@
 # TODO
 
+make a temp dir for fetch_test:do() for o.destDir
+Do a defer os.RemoveAll(o.destDir) per test.
+
 ## --timeout i
 
 Let user specify net/http timeout (for those larger repos and assets)

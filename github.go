@@ -19,7 +19,7 @@ type repo struct {
 	Owner string // The GitHub account name under which the repo exists
 	Name  string // The GitHub repo name
 	Token string // The personal access token to access this repo (if it's a private repo)
-	Api   string // https://api.github.com (or stub server - see github_test.go)
+	Api   string // https://api.github.com etc (or stub server - see github_test.go)
 }
 
 // cl : our single instance of http.Client to be reused throughout.

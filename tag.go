@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// INVALID_TAG_CONSTRAINT : - err tmpl
 const INVALID_TAG_CONSTRAINT = `
 The --tag value you entered is not a valid constraint expression.
 See https://github.com/opsgang/fetch#version-constraint-operators for examples.
@@ -15,6 +16,7 @@ Underlying error message:
 %s
 `
 
+// NO_VALID_TAG_FOUND : - err tmpl
 const NO_VALID_TAG_FOUND = `
 Error occurred computing tag that best satisfies version contraint expression:
 %s
@@ -30,7 +32,11 @@ func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
 		}
 		tag = latestTag
 
-		fmt.Printf("Most suitable tag for constraint %s is %s\n", o.tagConstraint, tag)
+		c := o.tagConstraint
+		if c == "" {
+			c = "[empty]"
+		}
+		fmt.Printf("Most suitable tag for constraint %s is %s\n", c, tag)
 	}
 
 	return

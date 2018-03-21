@@ -6,6 +6,41 @@ import (
 
 func TestTagToGet(t *testing.T) {
 	t.Parallel()
+	// specific - should work regardless of meeting semver format
+	// specific - includes when val prefixed with =
+	// if no tag provided - should provide latest
+	// if constraint can not be met, err
+
+	tags := []string{"foo", "v1.0.0", "10.0.20-some-txt", "bar", "10.0.10", "10.1.9", "100.10.1"}
+
+	o := fetchOpts{}
+
+	cases := []struct {
+		constraint string
+		tag        string
+		err        bool
+	}{
+		{"~>10.0", "10.1.9", false},
+		{"bar", "bar", false},
+		{"=bar", "bar", false},
+		{"", "100.10.1", false},
+		{"<1.0.0", "", true},
+	}
+
+	for _, tc := range cases {
+		o.tagConstraint = tc.constraint
+
+		if tag, err := o.tagToGet(tags); err != nil {
+			if tc.err != true {
+				t.Fatalf("Did not expect the error we received: %s\nconstraint:[%s]", err, tc.constraint)
+			}
+		} else {
+			if tag != tc.tag {
+				t.Fatalf("Did not expect the tag we received: %s\nconstraint:[%s]", tag, tc.constraint)
+			}
+		}
+
+	}
 }
 
 func TestBestFitTag(t *testing.T) {

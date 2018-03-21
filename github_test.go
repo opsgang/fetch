@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
@@ -13,8 +12,6 @@ import (
 
 func TestFetchReleaseTags(t *testing.T) {
 	t.Parallel()
-	s := apiStub()
-	defer s.Close()
 
 	// ... has some published release tags with all requested assets.
 	r1 := repo{
@@ -52,7 +49,7 @@ func TestFetchReleaseTags(t *testing.T) {
 	tags, err := o.fetchReleaseTags(r1)
 	if err != nil {
 		t.Fatalf("error fetching stub releases for foo/bar: err: %s", err)
-	} else if !reflect.DeepEqual(tags, []string{"bad8.7.6.5", "7.6.5", "bad2.3.4.0", "3.4.5"}) {
+	} else if !reflect.DeepEqual(tags, relTagsExpected) {
 		t.Fatalf("error fetching stub releases for foo/bar: got %#v", tags)
 	}
 
@@ -79,9 +76,6 @@ func TestFetchReleaseTags(t *testing.T) {
 
 func TestFetchTagsOnStubApi(t *testing.T) {
 	t.Parallel()
-
-	s := apiStub()
-	defer s.Close()
 
 	r1 := repo{
 		Url:   "https://github.com/foo/bar",
@@ -372,9 +366,6 @@ func TestFetchReleaseAsset(t *testing.T) {
 func TestApiResp(t *testing.T) {
 	t.Parallel()
 
-	s := apiStub()
-	defer s.Close()
-
 	r := repo{
 		Url:   "https://github.com/foo/bar",
 		Owner: "foo",
@@ -416,9 +407,6 @@ func TestApiResp(t *testing.T) {
 func TestRetryReq(t *testing.T) {
 	t.Parallel()
 
-	s := apiStub()
-	defer s.Close()
-
 	// ... test we are retrying (check the test counter)
 	failTwice := fmt.Sprintf("%s/fail/twice", s.URL)
 	request, err := http.NewRequest("GET", failTwice, nil)
@@ -441,72 +429,6 @@ func TestRetryReq(t *testing.T) {
 	if err != nil || resp.StatusCode != http.StatusInternalServerError {
 		t.Fatalf("/fail/always should have failed with resp code %d", http.StatusInternalServerError)
 	}
-}
-
-func apiStub() *httptest.Server {
-	var resp string
-	var counter = 0 // used for keeping track of retries
-
-	return httptest.NewServer(
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-
-				if v, ok := r.Header["Authorization"]; ok {
-					w.Header().Set("X-Authorization", v[0])
-				}
-				switch r.RequestURI {
-
-				case "/repos/has/no/tags?per_page=100&page=1":
-					resp = apiNoTags
-
-				case "/repos/has/no/releases?per_page=100&page=1":
-					resp = apiNoReleases
-
-				case "/repos/foo/bar/tags?per_page=100&page=1":
-					w.Header().Set("Link", apiTagsPage1Link)
-					resp = apiTagsPage1
-
-				case "/repos/foo/bar/tags?per_page=100&page=2":
-					w.Header().Set("Link", apiTagsPage2Link)
-					resp = apiTagsPage2
-
-				case "/repos/foo/bar/releases?per_page=100&page=1":
-					w.Header().Set("Link", relsPage1Link)
-					resp = relsPage1
-
-				case "/repos/foo/bar/releases?per_page=100&page=2":
-					w.Header().Set("Link", relsPage2Link)
-					resp = relsPage2
-
-				case "/repos/sna/fu/releases?per_page=100&page=1":
-					w.Header().Set("Link", noValidRelsPage1Link)
-					resp = noValidRelsPage1
-
-				case "/repos/sna/fu/releases?per_page=100&page=2":
-					w.Header().Set("Link", noValidRelsPage2Link)
-					resp = noValidRelsPage2
-
-				case "/fail/twice":
-					if counter == 2 {
-						resp = fmt.Sprintf("counter: %d", counter)
-					} else {
-						counter++
-						http.Error(w, "Remote failure", http.StatusBadGateway)
-						return
-					}
-
-				case "/fail/always":
-					http.Error(w, "Remote failure", http.StatusInternalServerError)
-					return
-
-				default:
-					http.Error(w, "not found", http.StatusNotFound)
-					return
-				}
-				w.Write([]byte(resp))
-			},
-		),
-	)
 }
 
 func fileExists(path string) bool {

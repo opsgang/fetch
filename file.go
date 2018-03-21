@@ -16,11 +16,13 @@ import (
 	"strings"
 )
 
+// FAILED_ZIPBALL_DOWNLOAD : err msg tmpl
 const FAILED_ZIPBALL_DOWNLOAD = `
 Failed to download file at the url %s.
 Received HTTP Response %d.
 `
 
+// CONTENT_TYPE_NOT_ZIP : err msg tmpl
 const CONTENT_TYPE_NOT_ZIP = `
 Failed to download file at the url %s.
 Expected HTTP Response's "Content-Type" header to be "application/zip", but was "%s"
@@ -41,7 +43,7 @@ func getSrcZip(c commit, gitHubToken string) (string, int, error) {
 	}
 
 	// Download the zip file, possibly using the GitHub oAuth Token
-	httpClient := &http.Client{}
+	httpClient := cl
 	req, err := gitHubZipRequest(c, gitHubToken)
 	if err != nil {
 		return zipFilePath, rStatus, err
@@ -88,6 +90,11 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	}
 	defer r.Close()
 
+	// IMPORTANT - we expect and ignore the parent dir in the zip:
+	// GitHub src zip files contain the src of the repo with in a parent folder
+	// named the same as the zip file (with out the .zip extension).
+	// We ignore this dir, and filter fromPaths past that point.
+
 	// pathPrefix will be stripped from source path before copying the file to localPath
 	// E.g. full path = fetch-test-public-0.0.3/folder/file1.txt
 	//      path prefix = fetch-test-public-0.0.3
@@ -101,47 +108,88 @@ func extractFiles(zipFilePath, filesToExtractFromZipPath, localPath string) erro
 	pathPrefix = filepath.Join(pathPrefix, filesToExtractFromZipPath)
 
 	os.MkdirAll(localPath, 0755)
-	// Iterate through the files in the archive,
-	// printing some of their contents.
+	// ... write out zipped files (from fromPath root)
 	for _, f := range r.File {
 
 		// If the given file is in the filesToExtractFromZipPath, proceed
 		if strings.Index(f.Name, pathPrefix) == 0 {
 
-			// When from-path is a directory, we want to drop
-			// the contents in to the local download dir with out
-			// the source-path portion of the path ...
+			// When from-path is a directory, we want to drop the contents in to the local
+			// download dir with out the source-path portion of the path ...
 			trimmedName := strings.TrimPrefix(f.Name, pathPrefix)
+
 			// ... but if --from-path is a single file the file name and
 			// path prefix are the same so we want just the base file name.
 			if f.Name == pathPrefix {
 				trimmedName = filepath.Base(f.Name)
 			}
-			if f.FileInfo().IsDir() {
-				// Create a directory
-				os.MkdirAll(filepath.Join(localPath, trimmedName), 0777)
+			fi := f.FileInfo()
+			destPath := filepath.Join(localPath, trimmedName)
+			if fi.IsDir() {
+				os.MkdirAll(destPath, 0777)
+
+			} else if fi.Mode()&os.ModeSymlink != 0 {
+				if err := writeSymlinkFromZip(f, destPath); err != nil {
+					return err
+				}
+			} else if fi.Mode().IsRegular() {
+				if err := writeRegFileFromZip(f, destPath); err != nil {
+					return err
+				}
 			} else {
-				// Read the file into a byte array
-				readCloser, err := f.Open()
-				if err != nil {
-					return fmt.Errorf("Failed to open file %s: %s", f.Name, err)
-				}
-
-				byteArray, err := ioutil.ReadAll(readCloser)
-				if err != nil {
-					return fmt.Errorf("Failed to read file %s: %s", f.Name, err)
-				}
-
-				// Write the file
-				err = ioutil.WriteFile(filepath.Join(localPath, trimmedName), byteArray, 0644)
-				if err != nil {
-					return fmt.Errorf("Failed to write file: %s", err)
-				}
+				fmt.Printf("... skipping %s in zip as not a dir, symlink, or regular file.", f.Name)
 			}
 		}
 	}
 
 	return nil
+}
+
+// writeSymlinkFromZip ():
+// ... extracts a symlink from the zip
+func writeSymlinkFromZip(f *zip.File, destPath string) (err error) {
+	readCloser, err := f.Open()
+	if err != nil {
+		return fmt.Errorf("Failed to open symlink %s in zip: %s", f.Name, err)
+	}
+
+	byteArray, err := ioutil.ReadAll(readCloser)
+	if err != nil {
+		return fmt.Errorf("Failed to read target of symlink %s in zip: %s", f.Name, err)
+	}
+
+	target := string(byteArray[:]) // ... stringify the byteArray
+
+	if err := os.Symlink(target, destPath); err != nil {
+		return fmt.Errorf("Could not create symlink %s from zip: %s", f.Name, err)
+	}
+
+	return
+}
+
+// writeRegFileFromZip ():
+// ... extracts a regular file (e.g. not a socket, fifo, dir, symlink etc ...) from a zip
+func writeRegFileFromZip(f *zip.File, destPath string) (err error) {
+	// Read the file into a byte array
+	readCloser, err := f.Open()
+	defer readCloser.Close()
+
+	if err != nil {
+		return fmt.Errorf("Failed to open file %s: %s", f.Name, err)
+	}
+
+	byteArray, err := ioutil.ReadAll(readCloser)
+	if err != nil {
+		return fmt.Errorf("Failed to read file %s: %s", f.Name, err)
+	}
+
+	// Write the file
+	err = ioutil.WriteFile(destPath, byteArray, 0644)
+	if err != nil {
+		return fmt.Errorf("Failed to write file: %s", err)
+	}
+
+	return
 }
 
 // doUnpack ():
@@ -307,7 +355,8 @@ func gitHubZipRequest(c commit, gitHubToken string) (*http.Request, error) {
 	}
 
 	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/zipball/%s",
+		"%s/repos/%s/%s/zipball/%s",
+		c.Repo.Api,
 		c.Repo.Owner,
 		c.Repo.Name,
 		gitRef,
