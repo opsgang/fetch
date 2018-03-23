@@ -63,7 +63,7 @@ type release struct {
 	Url        string // release url
 	Name       string // release name (not tag)
 	Prerelease bool   // not published?
-	TagName    string // the associated git tag
+	TagName    string `json:"tag_name"`// the associated git tag
 	Assets     []relAsset
 }
 
@@ -92,7 +92,7 @@ func init() {
 func (o *fetchOpts) fetchReleaseTags(r repo) (tagsForValidRels []string, err error) {
 
 	url := createGitHubRepoUrlForPath(r, "releases")
-	resps, err := r.callGitHubApi(url, headers{})
+	resps, err := r.callGitHubApi(url, headers{}, o.verbose)
 	if err != nil {
 		return tagsForValidRels, err
 	}
@@ -174,11 +174,11 @@ func (o *fetchOpts) filterTags(rels []release) (tags []string) {
 }
 
 // Fetch all tags from the given GitHub repo
-func fetchTags(r repo) ([]string, error) {
+func fetchTags(r repo, verbose bool) ([]string, error) {
 	var tagsList []string
 
 	url := createGitHubRepoUrlForPath(r, "tags")
-	resps, err := r.callGitHubApi(url, headers{})
+	resps, err := r.callGitHubApi(url, headers{}, verbose)
 	if err != nil {
 		return tagsList, err
 	}
@@ -239,7 +239,7 @@ func FetchReleaseAsset(r repo, assetId int, destPath string) error {
 	url := createGitHubRepoUrlForPath(r, fmt.Sprintf("releases/assets/%d", assetId))
 
 	// ... don't need to use callGitHubApi as that only wraps for pagination.
-	resp, _, err := r.apiResp(url, "", headers{"Accept": "application/octet-stream"})
+	resp, _, err := r.apiResp(url, "", headers{"Accept": "application/octet-stream"}, false)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func GetGitHubReleaseInfo(r repo, tag string) (release, error) {
 	release := release{}
 
 	url := createGitHubRepoUrlForPath(r, fmt.Sprintf("releases/tags/%s", tag))
-	resp, _, err := r.apiResp(url, "", headers{})
+	resp, _, err := r.apiResp(url, "", headers{}, false)
 	if err != nil {
 		return release, err
 	}
@@ -297,7 +297,7 @@ func retryReq(request *http.Request, url string) (resp *http.Response, err error
 	return
 }
 
-func (r repo) apiResp(path string, page string, h headers) (*http.Response, string, error) {
+func (r repo) apiResp(path string, page string, h headers, v bool) (*http.Response, string, error) {
 
 	var resp *http.Response
 
@@ -318,6 +318,9 @@ func (r repo) apiResp(path string, page string, h headers) (*http.Response, stri
 		request.Header.Set(headerName, headerValue)
 	}
 
+	if v {
+		fmt.Printf("... fetching page %s of results from api\n", page)
+	}
 	resp, err = retryReq(request, url)
 	if err != nil { // not checking resp code, only whether http transport succeeded
 		return nil, "", err
@@ -348,11 +351,11 @@ func (r repo) apiResp(path string, page string, h headers) (*http.Response, stri
 
 // callGitHubApi ():
 // Call the GitHub API, return HTTP response, and next page number if any
-func (r repo) callGitHubApi(path string, h headers) (resps []*http.Response, err error) {
+func (r repo) callGitHubApi(path string, h headers, v bool) (resps []*http.Response, err error) {
 	page := "1"
 
 	for page != "" {
-		resp, n, err := r.apiResp(path, page, h)
+		resp, n, err := r.apiResp(path, page, h, v)
 		if err != nil {
 			return resps, err
 		}

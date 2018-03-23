@@ -1088,76 +1088,76 @@ var apiTagsExpected = []string{
 const relsPage1 = `
 [
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/9876543",
+    "url": "https://api.github.com/repos/foo/bar/releases/9876543",
     "id": 9876543,
     "tag_name": "9.8.7",
     "name": "prerelease",
     "prerelease": true,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/9854782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/9854782",
         "id": 9854782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/9854783",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/9854783",
         "id": 9854783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/8765432",
+    "url": "https://api.github.com/repos/foo/bar/releases/8765432",
     "id": 8765432,
     "tag_name": "bad8.7.6.5",
     "name": "bad tag",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/8754782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/8754782",
         "id": 8754782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/8754783",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/8754783",
         "id": 8754783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/7654321",
+    "url": "https://api.github.com/repos/foo/bar/releases/7654321",
     "id": 7654321,
     "tag_name": "7.6.5",
     "name": "all good",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/7654782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/7654782",
         "id": 7654782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/7654783",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/7654783",
         "id": 7654783,
         "name": "bar.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/7654784",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/7654784",
         "id": 7654783,
         "name": "packed.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/6556789",
+    "url": "https://api.github.com/repos/foo/bar/releases/6556789",
     "id": 6556789,
     "tag_name": "6.5.5",
     "name": "missing asset",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/6554782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/6554782",
         "id": 6554782,
         "name": "foo.tgz"
       }
@@ -1169,71 +1169,71 @@ const relsPage1 = `
 const relsPage2 = `
 [
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/1234567",
+    "url": "https://api.github.com/repos/foo/bar/releases/1234567",
     "id": 1234567,
     "tag_name": "v1.2.3",
     "name": "prerelease",
     "prerelease": true,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/5354782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/5354782",
         "id": 5354782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/5354783",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/5354783",
         "id": 5354783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/2345678",
+    "url": "https://api.github.com/repos/foo/bar/releases/2345678",
     "id": 2345678,
     "tag_name": "bad2.3.4.0",
     "name": "bad tag",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/6354782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/6354782",
         "id": 6354782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/6354783",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/6354783",
         "id": 6354783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/3456789",
+    "url": "https://api.github.com/repos/foo/bar/releases/3456789",
     "id": 3456789,
     "tag_name": "3.4.5",
     "name": "all good",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/7354782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/7354782",
         "id": 7354782,
         "name": "foo.tgz"
       },
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/7354783",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/7354783",
         "id": 7354783,
         "name": "bar.tgz"
       }
     ]
   },
   {
-    "url": "https://api.github.com/repos/sna/fu/releases/4556789",
+    "url": "https://api.github.com/repos/foo/bar/releases/4556789",
     "id": 4556789,
     "tag_name": "4.5.6",
     "name": "missing asset",
     "prerelease": false,
     "assets": [
       {
-        "url": "https://api.github.com/repos/sna/fu/releases/assets/8354782",
+        "url": "https://api.github.com/repos/foo/bar/releases/assets/8354782",
         "id": 8354782,
         "name": "foo.tgz"
       }

@@ -93,7 +93,7 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 		Api:   s.URL,
 	}
 
-	tags, err := fetchTags(r1)
+	tags, err := fetchTags(r1, false)
 	if err != nil {
 		t.Fatalf("... should not have erred getting stubbed tags for %s", r1.Url)
 	} else if !reflect.DeepEqual(tags, apiTagsExpected) {
@@ -102,7 +102,7 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 
 	// test when no tags returned (empty json array)
 	// ... get results from the stub server for has/no
-	tags, err = fetchTags(r2)
+	tags, err = fetchTags(r2, false)
 	if tags != nil {
 		t.Fatalf("should have got no go tags back for this test: got %#v", tags)
 	}
@@ -129,7 +129,7 @@ func TestFetchTagsOnRealRepos(t *testing.T) {
 
 	for _, tc := range cases {
 		r, err := urlToGitHubRepo(tc.repoUrl, tc.gitHubOAuthToken)
-		tags, err := fetchTags(r)
+		tags, err := fetchTags(r, false)
 		if err != nil {
 			t.Fatalf("error fetching tags: %s", err)
 		}
@@ -375,7 +375,7 @@ func TestApiResp(t *testing.T) {
 	}
 
 	// ... check we get next page back
-	resp, next, err := r.apiResp("repos/foo/bar/tags", "1", headers{})
+	resp, next, err := r.apiResp("repos/foo/bar/tags", "1", headers{}, false)
 
 	if err != nil {
 		t.Fatalf("did not expect error when calling repos/foo/bar/tags, page 1: %s", err)
@@ -394,7 +394,7 @@ func TestApiResp(t *testing.T) {
 	}
 
 	// ... check no further pages after last
-	_, next, err = r.apiResp("repos/foo/bar/tags", "2", headers{})
+	_, next, err = r.apiResp("repos/foo/bar/tags", "2", headers{}, false)
 	if err != nil {
 		t.Fatalf("did not expect error when calling repos/foo/bar/tags, page 1")
 	}

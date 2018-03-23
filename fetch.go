@@ -41,7 +41,7 @@ func (o *fetchOpts) do(r repo) (err error) {
 // returns str slice of tags - release tags, if --release-asset is specified.
 func (o *fetchOpts) tagsList(r repo) (tags []string, err error) {
 	if len(o.relAssets) == 0 {
-		tags, err = fetchTags(r)
+		tags, err = fetchTags(r, o.verbose)
 	} else {
 		tags, err = o.fetchReleaseTags(r)
 	}

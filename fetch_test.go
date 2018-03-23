@@ -23,6 +23,7 @@ func TestTagsList(t *testing.T) {
 	// happy path ... release assets
 	oRel := fetchOpts{}
 	oRel.relAssets = []string{"foo.tgz", "bar.tgz"}
+	oRel.verbose = true
 
 	if tags, err := oRel.tagsList(r); err != nil {
 		t.Fatalf("... expected a list of published release tags from foo/bar, got\n%s", err)
@@ -32,6 +33,7 @@ func TestTagsList(t *testing.T) {
 
 	// happy path ... tags
 	oTag := fetchOpts{}
+	oRel.verbose = true
 
 	if tags, err := oTag.tagsList(r); err != nil {
 		t.Fatalf("... expected a tag list from foo/bar, got\n%s", err)
