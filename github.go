@@ -63,7 +63,7 @@ type release struct {
 	Url        string // release url
 	Name       string // release name (not tag)
 	Prerelease bool   // not published?
-	TagName    string `json:"tag_name"`// the associated git tag
+	TagName    string `json:"tag_name"` // the associated git tag
 	Assets     []relAsset
 }
 
