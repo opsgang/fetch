@@ -5,38 +5,35 @@ package main
 
 const usageLead = `
 	GITHUB_TOKEN=$access_token ghfetch [global options] /my/downloads/dir
+	​
 	See https://github.com/opsgang/fetch for examples, argument definitions, and additional docs.
 `
 
 const txtUsage = `
-	Download selected subfolders/files OR release attachments of a GitHub repo.
-	Select a specific git commit, branch, or tag.
-	Specify a semantic version constraint for tags e.g. '>=1.0,<2.0' !
-	Choose to automatically unpack release attachment tars and gzips!!
-	Verify downloaded release attachments against gpg asc signature files!!!
 	​
+   * Download selected subfolders/files OR release attachments of a GitHub repo.
+   * Select a specific git commit, branch, or tag.
+   * Specify a semantic version constraint for tags e.g. '>=1.0,<2.0' !
+   * Choose to automatically unpack release attachment tars and gzips!!
+   * Verify downloaded release attachments against gpg asc signature files!!!
 `
 
 const txtRepo = `
 Required. Fully qualified url of the github repo.
-	​
 `
 
 const txtCommit = `
 Git commit SHA1 to checkout. Overrides --branch and --tag.
-	​
 `
 
 const txtBranch = `
 Git branch - will checkout HEAD commit. Overrides --tag.
-	​
 `
 
 const txtTag = `
 Git tag to download, expressed with Hashicorp's version constraint operators.
 	If empty, ghfetch will download the latest tag.
 	Examples: https://github.com/opsgang/fetch#version-constraint-operators.
-	​
 `
 
 const txtFromPath = `
@@ -47,7 +44,6 @@ Get contents of ` + "`/PATH/IN/REPO`" + `. The folder itself is not created loca
 	​
 	e.g. # puts libs/* and build.sh in to /opt/libs
 		--from-path='/libs/' --from-path='/scripts/build.sh' /opt/libs
-	​
 `
 
 const txtReleaseAsset = `
@@ -56,13 +52,11 @@ Name of github release attachment to download. Requires --tag.
 	​
 	e.g. # get foo.tgz and bar.txt from latest 1.x release attachments
 		--tag='~>1.0' --release-asset='foo.tgz' --release-asset='bar.txt',
-	​
 `
 
 const txtVerbose = `
 Shouty mode. Reveals more of what's happening during execution.
 	For when STDOUT craves more excitement.
-	​
 `
 
 const txtUnpack = `
@@ -73,6 +67,11 @@ Whether to unpack a compressed release attachment. Requires --release-asset.
 		--tag='~>1.0' --unpack --release-asset='foo.tgz',
 	​
 `
+
+const txtTimeout = `
+Number of seconds to wait for each download to complete.
+	If you pass a value of 0, you'll get the default.
+	If you pass a negative number, you'll get scolded.`
 
 const txtGpgPubKey = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
 	Requires --release-asset.

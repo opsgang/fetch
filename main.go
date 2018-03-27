@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/urfave/cli"
 )
@@ -29,6 +30,7 @@ type fetchOpts struct {
 	verbose       bool
 	gpgPubKey     string
 	destDir       string
+	timeout		  int
 }
 
 // releaseDl : data to complete download of a release asset
@@ -49,9 +51,17 @@ const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
 const optGpgPubKey = "gpg-public-key"
 const optVerbose = "verbose"
+const optTimeout = "timeout"
 
 func main() {
 	app := cli.NewApp()
+
+	defaultFlagStringer := cli.FlagStringer
+
+	// prefer help text to separate long flag descriptions with newline.
+	cli.FlagStringer = func(f cli.Flag) string {
+		return fmt.Sprintf("%s\n\t", defaultFlagStringer(f))
+	}
 
 	app.Name = "ghfetch"
 
@@ -103,6 +113,11 @@ func main() {
 			Usage:  txtToken,
 			EnvVar: "API_TOKEN,API_OAUTH_TOKEN,GITHUB_TOKEN,GITHUB_OAUTH_TOKEN",
 		},
+		cli.IntFlag{
+			Name:  optTimeout,
+			Value: 120,
+			Usage: txtTimeout,
+		},
 	}
 
 	app.Action = runFetchWrapper
@@ -131,6 +146,8 @@ func runFetch(c *cli.Context) (err error) {
 		fmt.Println("WARNING: no api token provided - rate-limited and can't access private repos")
 	}
 
+	o.setTimeout()
+
 	// Prepare the vars we'll need to download
 	r, err := urlToGitHubRepo(o.repoUrl, o.apiToken)
 	if err != nil {
@@ -155,6 +172,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 		apiToken:      c.String(optApiToken),
 		fromPaths:     c.StringSlice(optFromPath),
 		relAssets:     c.StringSlice(optReleaseAsset),
+		timeout:       c.Int(optTimeout),
 		unpack:        c.Bool(optUnpack),
 		verbose:       c.Bool(optVerbose),
 		gpgPubKey:     c.String(optGpgPubKey),
@@ -164,19 +182,22 @@ func parseOptions(c *cli.Context) fetchOpts {
 
 func validateOptions(o fetchOpts) error {
 	if o.repoUrl == "" {
-		return fmt.Errorf("The --%s flag is required. Run \"fetch --help\" for full usage info.", optRepo)
+		return fmt.Errorf("The --%s flag is required.", optRepo)
 	}
 
 	if o.destDir == "" {
-		return fmt.Errorf("Missing required arguments specifying the local download dir. Run \"fetch --help\" for full usage info.")
+		return fmt.Errorf("Final argument must be the destination dir.")
 	}
 
 	if o.tagConstraint == "" && o.commitSha == "" && o.branch == "" {
-		return fmt.Errorf("You must specify exactly one of --%s, --%s, or --%s. Run \"fetch --help\" for full usage info.", optTag, optCommit, optBranch)
+		return fmt.Errorf(
+			"You must specify only one of --%s, --%s, or --%s.",
+			optTag, optCommit, optBranch,
+		)
 	}
 
 	if len(o.relAssets) > 0 && o.tagConstraint == "" {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optReleaseAsset, optTag)
+		return fmt.Errorf("The --%s flag can only be used with --%s.", optReleaseAsset, optTag)
 	}
 
 	if len(o.relAssets) > 0 && len(o.fromPaths) > 0 {
@@ -184,12 +205,12 @@ func validateOptions(o fetchOpts) error {
 	}
 
 	if len(o.relAssets) == 0 && o.unpack {
-		return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optUnpack, optReleaseAsset)
+		return fmt.Errorf("The --%s flag can only be used with --%s.", optUnpack, optReleaseAsset)
 	}
 
 	if o.gpgPubKey != "" {
 		if len(o.relAssets) == 0 {
-			return fmt.Errorf("The --%s flag can only be used with --%s. Run \"fetch --help\" for full usage info.", optGpgPubKey, optReleaseAsset)
+			return fmt.Errorf("The --%s flag can only be used with --%s.", optGpgPubKey, optReleaseAsset)
 		}
 
 		// check file is readable
@@ -198,6 +219,10 @@ func validateOptions(o fetchOpts) error {
 			return fmt.Errorf("GPG public key %s is not a readable file.", o.gpgPubKey)
 		}
 		defer reader.Close()
+	}
+
+	if o.timeout <= 0 {
+		return fmt.Errorf("--timeout expects a POSITIVE, non-zero number of seconds!", o.timeout)
 	}
 
 	return nil

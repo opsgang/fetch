@@ -51,3 +51,14 @@ func (o *fetchOpts) tagsList(r repo) (tags []string, err error) {
 
 	return
 }
+
+// setTimeout ():
+// sets net/http transport's Timeout attr
+func (o *fetchOpts) setTimeout() {
+	if o.timeout != 0 {
+		if o.verbose {
+			fmt.Printf("... setting download timeout to %d seconds", o.timeout)
+		}
+		cl.Timeout = time.Second * time.Duration(o.timeout)
+	}
+}

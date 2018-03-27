@@ -1,12 +1,5 @@
 # TODO
 
-make a temp dir for fetch_test:do() for o.destDir
-Do a defer os.RemoveAll(o.destDir) per test.
-
-## --timeout i
-
-Let user specify net/http timeout (for those larger repos and assets)
-
 ## --tag-prefix (filter)
 Account for only fetching tags that have a prefix with an optional delimiter
 before x.y.z (can be a \., \- or \_, or no delimiter)
@@ -22,8 +15,6 @@ downloaded.
 * Account for when no tag meeting a constraint exists - should fail, not default
   to latest.
 
-# IN PROGRESS
-
 ## end-to-end tests
 
 * remove tests against real repos from \_test.go files
@@ -33,9 +24,13 @@ downloaded.
     for a release, using from-path, using commit, using branch,
     using gpg. Compare to expected output.
 
+# IN PROGRESS
+
+## --timeout i
+
+Let user specify net/http timeout (for those larger repos and assets)
+
 ## refactoring
-* reduce cyclomatic complexity
-* remove unneeded api calls for releases, by keeping the release asset info, not just tag name.
 * exported to unexported
 
 ## rename to ghget | glget | bbget (it's shorter)
