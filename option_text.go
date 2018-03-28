@@ -59,6 +59,11 @@ Shouty mode. Reveals more of what's happening during execution.
 	For when STDOUT craves more excitement.
 `
 
+const txtWhichTag = `
+Will exit after displaying which tag would have been retrieved.
+	Only relevant if a tag constraint is specified.
+`
+
 const txtUnpack = `
 Whether to unpack a compressed release attachment. Requires --release-asset.
 	Only unpacks tars, tar-gzip and gzip, otherwise does nothing.

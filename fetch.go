@@ -19,6 +19,10 @@ func (o *fetchOpts) do(r repo) (err error) {
 		return err
 	}
 
+	if o.whichTag {
+		return
+	}
+
 	// If no release assets or from-paths specified, assume
 	// user wants all files from zipball.
 	if len(o.fromPaths) == 0 && len(o.relAssets) == 0 {

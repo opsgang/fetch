@@ -30,12 +30,17 @@ build_macos() {
 
 get_glide() {
     (
+        echo $GOPATH
         command -v glide >/dev/null && return 0
         wd || return 1
         if on_alpine && not_root
         then
             curl https://glide.sh/get | su-exec root sh || exit 1
             su-exec root glide install
+        elif not_root
+        then
+            curl https://glide.sh/get | sudo -E sh || exit 1
+            sudo -E GOPATH=$GOPATH glide install
         else
             curl https://glide.sh/get | sh || exit 1
             glide install
@@ -52,6 +57,9 @@ _build() {
         if on_alpine && not_root
         then
             su-exec root go build --ldflags "$fl" -o $GOBIN/ghfetch .
+        elif not_root
+        then
+            sudo -E go build --ldflags "$fl" -o $GOBIN/ghfetch .
         else
             go build --ldflags "$fl" -o $GOBIN/ghfetch .
         fi

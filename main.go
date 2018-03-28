@@ -27,6 +27,7 @@ type fetchOpts struct {
 	relAssets     []string
 	unpack        bool
 	verbose       bool
+	whichTag      bool
 	gpgPubKey     string
 	destDir       string
 	timeout		  int
@@ -50,6 +51,7 @@ const optReleaseAsset = "release-asset"
 const optUnpack = "unpack"
 const optGpgPubKey = "gpg-public-key"
 const optVerbose = "verbose"
+const optWhichTag = "which-tag"
 const optTimeout = "timeout"
 
 func main() {
@@ -102,6 +104,10 @@ func main() {
 		cli.BoolFlag{
 			Name:  optVerbose,
 			Usage: txtVerbose,
+		},
+		cli.BoolFlag{
+			Name:  optWhichTag,
+			Usage: txtWhichTag,
 		},
 		cli.StringFlag{
 			Name:  optGpgPubKey,
@@ -174,6 +180,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 		timeout:       c.Int(optTimeout),
 		unpack:        c.Bool(optUnpack),
 		verbose:       c.Bool(optVerbose),
+		whichTag:      c.Bool(optWhichTag),
 		gpgPubKey:     c.String(optGpgPubKey),
 		destDir:       localDownloadPath,
 	}
@@ -197,6 +204,10 @@ func validateOptions(o fetchOpts) error {
 
 	if len(o.relAssets) > 0 && o.tagConstraint == "" {
 		return fmt.Errorf("The --%s flag can only be used with --%s.", optReleaseAsset, optTag)
+	}
+
+	if o.tagConstraint == "" &&  o.whichTag  {
+		return fmt.Errorf("The --%s flag makes no sense without --%s.", optWhichTag, optTag)
 	}
 
 	if len(o.relAssets) > 0 && len(o.fromPaths) > 0 {
