@@ -24,14 +24,13 @@ downloaded.
     for a release, using from-path, using commit, using branch,
     using gpg. Compare to expected output.
 
-# IN PROGRESS
-
-## --timeout i
-
-Let user specify net/http timeout (for those larger repos and assets)
-
 ## refactoring
-* exported to unexported
+
+* rewrite it separating methods for fetchOptions, rel and tag structs.
+
+* correct docco.
+
+# IN PROGRESS
 
 ## rename to ghget | glget | bbget (it's shorter)
 
@@ -45,6 +44,10 @@ to me again.
 Still need to rename all vars, methods that use Fetch to use something else.
 
 # DONE
+
+## --timeout i
+
+Let user specify net/http timeout (for those larger repos and assets)
 
 ## --verbose
 Suppress output unless this is specified.

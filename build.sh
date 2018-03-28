@@ -5,6 +5,8 @@ setup_fetch() {
   export __WD=$GOPATH/src/github.com/opsgang/fetch
   export PATH=$GOBIN:$PATH
   export __V=${FETCH_VERSION:-v1.0.0}
+
+  get_glide || return 1
 }
 
 wd() {
@@ -23,6 +25,21 @@ build_macos() {
     (
         export GOOS=darwin GOARCH=amd64
         _build
+    )
+}
+
+get_glide() {
+    (
+        command -v glide >/dev/null && return 0
+        wd || return 1
+        if on_alpine && not_root
+        then
+            curl https://glide.sh/get | su-exec root sh || exit 1
+            su-exec root glide install
+        else
+            curl https://glide.sh/get | sh || exit 1
+            glide install
+        fi
     )
 }
 
