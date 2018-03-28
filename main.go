@@ -221,7 +221,7 @@ func validateOptions(o fetchOpts) error {
 	}
 
 	if o.timeout <= 0 {
-		return fmt.Errorf("--timeout expects a POSITIVE, non-zero number of seconds!", o.timeout)
+		return fmt.Errorf("--timeout expects a POSITIVE, non-zero number of seconds!, not %d", o.timeout)
 	}
 
 	return nil
