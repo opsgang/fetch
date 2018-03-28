@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 func (o *fetchOpts) do(r repo) (err error) {
