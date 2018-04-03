@@ -30,7 +30,7 @@ type fetchOpts struct {
 	whichTag      bool
 	gpgPubKey     string
 	destDir       string
-	timeout		  int
+	timeout       int
 }
 
 // releaseDl : data to complete download of a release asset
@@ -191,8 +191,8 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("The --%s flag is required.", optRepo)
 	}
 
-	if o.destDir == "" {
-		return fmt.Errorf("Final argument must be the destination dir.")
+	if o.destDir == "" && !o.whichTag {
+		return fmt.Errorf("Final argument must be the destination dir (unless calling --which-tag)")
 	}
 
 	if o.tagConstraint == "" && o.commitSha == "" && o.branch == "" {
@@ -206,7 +206,7 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("The --%s flag can only be used with --%s.", optReleaseAsset, optTag)
 	}
 
-	if o.tagConstraint == "" &&  o.whichTag  {
+	if o.tagConstraint == "" && o.whichTag {
 		return fmt.Errorf("The --%s flag makes no sense without --%s.", optWhichTag, optTag)
 	}
 

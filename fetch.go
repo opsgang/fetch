@@ -20,7 +20,7 @@ func (o *fetchOpts) do(r repo) (err error) {
 	}
 
 	if o.whichTag {
-		return
+		return err
 	}
 
 	// If no release assets or from-paths specified, assume

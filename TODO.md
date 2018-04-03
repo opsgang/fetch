@@ -4,14 +4,6 @@
 Account for only fetching tags that have a prefix with an optional delimiter
 before x.y.z (can be a \., \- or \_, or no delimiter)
 
-## --which-tag
-FetchTags returns the latest tag or else the one that meets a constraint.
-
-Offer `--which-tag`, which will only display a tag that would have been
-downloaded.
-
-* NTH Account for when release asset does not exist - should fail
-
 * Account for when no tag meeting a constraint exists - should fail, not default
   to latest.
 
@@ -44,6 +36,15 @@ to me again.
 Still need to rename all vars, methods that use Fetch to use something else.
 
 # DONE
+
+## --which-tag
+FetchTags returns the latest tag or else the one that meets a constraint.
+
+Offer `--which-tag`, which will only display a tag that would have been
+downloaded.
+
+
+* Account for when release asset does not exist - should fail
 
 ## --timeout i
 
