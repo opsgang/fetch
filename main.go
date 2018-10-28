@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 
 	"github.com/urfave/cli"
 )
@@ -25,6 +26,8 @@ type fetchOpts struct {
 	apiToken      string
 	fromPaths     []string
 	relAssets     []string
+	tagRegex      string
+	semverMatcher *regexp.Regexp
 	unpack        bool
 	verbose       bool
 	whichTag      bool
@@ -53,6 +56,9 @@ const optGpgPubKey = "gpg-public-key"
 const optVerbose = "verbose"
 const optWhichTag = "which-tag"
 const optTimeout = "timeout"
+const optTagRegex = "tag-regex"
+
+const semverRegx = `[vV]?(?P<semver>(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)`
 
 func main() {
 	app := cli.NewApp()
@@ -110,6 +116,10 @@ func main() {
 			Usage: txtWhichTag,
 		},
 		cli.StringFlag{
+			Name:  optTagRegex,
+			Usage: txtTagRegex,
+		},
+		cli.StringFlag{
 			Name:  optGpgPubKey,
 			Usage: txtGpgPubKey,
 		},
@@ -147,6 +157,18 @@ func runFetch(c *cli.Context) (err error) {
 		return err
 	}
 
+	if o.tagRegex != "" {
+		tokenToReplace := regexp.MustCompile(`SEMVER`)
+		// ... insert our semver matching pattern in to the user-defined pattern.
+		pattern := tokenToReplace.ReplaceAllLiteralString(o.tagRegex, semverRegx)
+		if pattern == o.tagRegex {
+			return fmt.Errorf("--tag-regex pattern must include string SEMVER. See --help")
+		}
+
+		// wrap in defer and use recover() to avoid ugly panic msg?
+		o.semverMatcher = regexp.MustCompile(pattern)
+	}
+
 	if o.apiToken == "" {
 		fmt.Println("WARNING: no api token provided - rate-limited and can't access private repos")
 	}
@@ -177,6 +199,7 @@ func parseOptions(c *cli.Context) fetchOpts {
 		apiToken:      c.String(optApiToken),
 		fromPaths:     c.StringSlice(optFromPath),
 		relAssets:     c.StringSlice(optReleaseAsset),
+		tagRegex:      c.String(optTagRegex),
 		timeout:       c.Int(optTimeout),
 		unpack:        c.Bool(optUnpack),
 		verbose:       c.Bool(optVerbose),
@@ -223,6 +246,10 @@ func validateOptions(o fetchOpts) error {
 
 	if len(o.relAssets) == 0 && o.unpack {
 		return fmt.Errorf("The --%s flag can only be used with --%s.", optUnpack, optReleaseAsset)
+	}
+
+	if o.tagRegex != "" && o.tagConstraint == "" {
+		return fmt.Errorf("The --%s flag can only be used with --%s.", optTagRegex, optTag)
 	}
 
 	if o.gpgPubKey != "" {

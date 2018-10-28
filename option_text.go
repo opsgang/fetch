@@ -78,6 +78,17 @@ Number of seconds to wait for each download to complete.
 	If you pass a value of 0, you'll get the default.
 	If you pass a negative number, you'll get scolded.`
 
+const txtTagRegex = `
+If your git tags contain more than just the semver, pass a regex
+	to filter the ones you are interested in. Use string SEMVER to
+	indicate where the semver is in the pattern.
+
+	e.g. with tags such as 'someapp01-v0.0.2' and 'thatapp01-v0.03'
+		--tag-regex="^someapp\d+-SEMVER"
+		# only consider someapp tags
+	​
+`
+
 const txtGpgPubKey = "`/PATH/TO/KEY` " + `to verify downloaded release assets.
 	Requires --release-asset.
 	If set, will look for <asset-name>.asc or <asset-name>.asc.txt attached

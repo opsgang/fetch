@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-version"
 	"sort"
 	"strings"
+
+	"github.com/hashicorp/go-version"
 )
 
 // INVALID_TAG_CONSTRAINT : - err tmpl
@@ -22,8 +23,79 @@ Error occurred computing tag that best satisfies version contraint expression:
 %s
 `
 
+// AMBIGUOUS_REGEX : - err tmpl
+const AMBIGUOUS_REGEX = `
+Ambiguous results: multiple tags match your regex:
+- %s
+`
+
+/*
+Instead of setting _regexOn to true, options should be created in main and fetch for passing a regex
+pattern should be compiled from user's string and replacement of token str SEMVER AND compiled
+during option validation.
+
+If validation passed, o.regexMatch should have a value of semverMatcher e.g. semverMatcher := regexp.MustCompile(pattern)
+*/
+
 func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
+
+	var tagsToCheck []string
+	var semverToTag map[string]string = make(map[string]string)
+
+	if o.tagRegex != "" {
+
+		var semverGroupIndex int
+
+		// used to check if multiple tags yield same semver string (fail)
+		// and ultimately to return actual tag to retrieve.
+
+		namedGroups := o.semverMatcher.SubexpNames() // slice of named groups
+		// for all tags, find ones that match pattern
+
+		// ... find capture group for semver str
+		for i, name := range namedGroups {
+			if name == "semver" {
+				semverGroupIndex = i
+				break
+			}
+		}
+
+		for _, tag := range tags {
+			matches := o.semverMatcher.FindStringSubmatch(tag)
+			if len(matches) >= semverGroupIndex+1 { // got a match
+				fmt.Println("matched " + tag + ":[" + matches[semverGroupIndex] + "]")
+				semver := matches[semverGroupIndex]
+				// check if a previously regexed tag yielded same semver
+				if v, ok := semverToTag[matches[semverGroupIndex]]; ok {
+					return tag, fmt.Errorf(
+						AMBIGUOUS_REGEX,
+						strings.Join([]string{tag, v}, "\n- "),
+					)
+				}
+				tagsToCheck = append(tagsToCheck, semver)
+				semverToTag[semver] = tag
+			}
+		}
+	} else {
+		tagsToCheck = tags
+	}
+
+	tag, err = o.determineAppropriateSemver(tagsToCheck)
+	if err != nil {
+		return
+	}
+
+	if o.tagRegex != "" {
+		tag = semverToTag[tag]
+	}
+
+	return
+}
+
+func (o *fetchOpts) determineAppropriateSemver(tags []string) (tag string, err error) {
+
 	specific, tag := isTagConstraintOrExactTag(o.tagConstraint)
+	fmt.Printf("tags %s", tags)
 	if !specific {
 		// Find the specific release that matches the latest version constraint
 		latestTag, err := bestFitTag(o.tagConstraint, tags)
@@ -38,7 +110,6 @@ func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
 		}
 		fmt.Printf("Most suitable tag for constraint %s is %s\n", c, tag)
 	}
-
 	return
 }
 

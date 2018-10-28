@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestTagToGet(t *testing.T) {
+func TestDetermineAppropriateSemver(t *testing.T) {
 	t.Parallel()
 	// specific - should work regardless of meeting semver format
 	// specific - includes when val prefixed with =
@@ -30,7 +30,7 @@ func TestTagToGet(t *testing.T) {
 	for _, tc := range cases {
 		o.tagConstraint = tc.constraint
 
-		if tag, err := o.tagToGet(tags); err != nil {
+		if tag, err := o.determineAppropriateSemver(tags); err != nil {
 			if tc.err != true {
 				t.Fatalf("Did not expect the error we received: %s\nconstraint:[%s]", err, tc.constraint)
 			}
