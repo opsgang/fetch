@@ -14,6 +14,7 @@ func (o *fetchOpts) do(r repo) (err error) {
 
 	if o.tagConstraint != "" {
 		tags, err := o.tagsList(r)
+
 		if err != nil {
 			return err
 		}
@@ -24,6 +25,7 @@ func (o *fetchOpts) do(r repo) (err error) {
 		}
 	}
 
+	fmt.Printf("Most suitable tag is %s\n", tag)
 	if o.whichTag {
 		return err
 	}

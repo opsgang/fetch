@@ -95,7 +95,6 @@ func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
 func (o *fetchOpts) determineAppropriateSemver(tags []string) (tag string, err error) {
 
 	specific, tag := isTagConstraintOrExactTag(o.tagConstraint)
-	fmt.Printf("tags %s", tags)
 	if !specific {
 		// Find the specific release that matches the latest version constraint
 		latestTag, err := bestFitTag(o.tagConstraint, tags)
@@ -108,7 +107,6 @@ func (o *fetchOpts) determineAppropriateSemver(tags []string) (tag string, err e
 		if c == "" {
 			c = "[empty]"
 		}
-		fmt.Printf("Most suitable tag for constraint %s is %s\n", c, tag)
 	}
 	return
 }
