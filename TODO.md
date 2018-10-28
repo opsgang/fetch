@@ -1,6 +1,9 @@
 # TODO
 
-## --tag-regex-filter (filter)
+## --tag-regex (filter)
+
+NEED a repo with release assets we can use filter with.
+
 Account for only fetching tags that have a prefix leading the semver string
 and / or a suffix after the semver string.
 
@@ -20,25 +23,7 @@ bar-app-2.1.10-20180711120000
 
 If I want the latest bar-app, I should use a filter pattern like:
 
-`^bar\-app\-(\d+\.\d+\.\d+)` # if we know the semver ALWAYS follows a set prefix
-
-OR
-
-`^bar\-app\-(.*)\-\d+$` # match of semver based on known suffix and prefix format.
-
-OR
-
-`^bar\-app\-(\d+\.\d+\.\d+)\-\d+$` # strict format of desired tag string.
-
-The following patterns are bad:
-
-`(\d+\.\d+\.\d+)`        # will match all foo-app tags as well.
-`.*\-(\d\.\d+\.\d+)\-.*` # will match all foo-bar tags as well.
-`bar-app\-(.*)`          # will assume the timestamp suffix is part of the semver string.
-
-* pattern MUST contain EXACTLY ONE capture group to match the semver.
-
-* all other parts of the pattern are to identify which tags are relevant.
+`^bar-app-SEMVER-d+$` or even `SEMVER-\d+$#
 
 * Account for when no tag meeting a constraint exists - should fail, not default
   to latest.
