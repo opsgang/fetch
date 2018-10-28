@@ -60,11 +60,8 @@ func TestDo(t *testing.T) {
 
 func testDoFromPaths(t *testing.T, r repo) {
 
-	// default behaviour:
-	// will download whole repo from latest tag.
-	//
 	// * from-path of / if user specified neither from-path nor release-asset
-	// * latest tag used.
+	// * latest tag used (as our constraint is anything over 0.0.0).
 	//
 	// NOTE cli prevents defaulting to latest tag as user is required to
 	// choose a tag or tag constraint or branch or commit.
@@ -77,6 +74,7 @@ func testDoFromPaths(t *testing.T, r repo) {
 
 	o := fetchOpts{}
 	o.destDir = tempDir
+	o.tagConstraint = "> 0.0.0"
 
 	err = o.do(r)
 	if err != nil {
@@ -92,6 +90,7 @@ func testDoFromPaths(t *testing.T, r repo) {
 
 func testDoReleaseAssets(t *testing.T, r repo) {
 
+	// * latest release tag used (as our constraint is anything over 0.0.0).
 	tempDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %s", err)
@@ -101,6 +100,7 @@ func testDoReleaseAssets(t *testing.T, r repo) {
 	o := fetchOpts{}
 	o.destDir = tempDir
 	o.relAssets = []string{"packed.tgz"}
+	o.tagConstraint = "> 0.0.0"
 
 	err = o.do(r)
 	if err != nil {

@@ -9,14 +9,19 @@ func (o *fetchOpts) do(r repo) (err error) {
 
 	// Get the tags for the given repo
 	// or tags for actual releases if getting release assets.
-	tags, err := o.tagsList(r)
-	if err != nil {
-		return err
-	}
 
-	tag, err := o.tagToGet(tags)
-	if err != nil {
-		return err
+	var tag string = ""
+
+	if o.tagConstraint != "" {
+		tags, err := o.tagsList(r)
+		if err != nil {
+			return err
+		}
+
+		tag, err = o.tagToGet(tags)
+		if err != nil {
+			return err
+		}
 	}
 
 	if o.whichTag {

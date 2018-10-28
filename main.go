@@ -195,9 +195,16 @@ func validateOptions(o fetchOpts) error {
 		return fmt.Errorf("Final argument must be the destination dir (unless calling --which-tag)")
 	}
 
-	if o.tagConstraint == "" && o.commitSha == "" && o.branch == "" {
+	// ... must specify only one of sha, tag or branch
+	c := 0
+	for _, val := range []string{o.tagConstraint, o.commitSha, o.branch} {
+		if val != "" {
+			c = c + 1
+		}
+	}
+	if c != 1 {
 		return fmt.Errorf(
-			"You must specify only one of --%s, --%s, or --%s.",
+			"You must specify one (and only one) of --%s, --%s, or --%s.",
 			optTag, optCommit, optBranch,
 		)
 	}
@@ -399,7 +406,7 @@ func cleanupZipFile(localZipFilePath string) error {
 	return nil
 }
 
-// Return ture if the given slice contains the given string
+// Return true if the given slice contains the given string
 func stringInSlice(s string, slice []string) bool {
 	for _, val := range slice {
 		if val == s {

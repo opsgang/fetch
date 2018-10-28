@@ -28,7 +28,7 @@ var cl *http.Client
 type headers map[string]string
 
 // Hierarchy:
-// * commitSha > branch > GitTag
+// * commitSha > GitTag > branch
 // * Example: GitTag and branch are both specified; use the GitTag
 // * Example: GitTag and commitSha are both specified; use the commitSha
 // * Example: branch alone is specified; use branch
@@ -110,7 +110,7 @@ func (o *fetchOpts) fetchReleaseTags(r repo) (tagsForValidRels []string, err err
 			return tagsForValidRels, err
 		}
 
-		tags := o.filterTags(rels)
+		tags := o.filterReleaseTags(rels)
 
 		if len(tags) != 0 {
 			tagsForValidRels = append(tagsForValidRels, tags...)
@@ -125,9 +125,8 @@ func (o *fetchOpts) fetchReleaseTags(r repo) (tagsForValidRels []string, err err
 	return
 }
 
-// filterTags ():
-// ... fetchOpts only used for slice of release assets
-func (o *fetchOpts) filterTags(rels []release) (tags []string) {
+// filterReleaseTags ():
+func (o *fetchOpts) filterReleaseTags(rels []release) (tags []string) {
 
 	for _, rel := range rels {
 		// ... skip if prerelease

@@ -1,11 +1,53 @@
 # TODO
 
-## --tag-prefix (filter)
-Account for only fetching tags that have a prefix with an optional delimiter
-before x.y.z (can be a \., \- or \_, or no delimiter)
+## --tag-regex-filter (filter)
+Account for only fetching tags that have a prefix leading the semver string
+and / or a suffix after the semver string.
+
+To avoid ambiguous results, the user is urged to use fixed strings whereever
+possible.
+
+EXAMPLE
+
+repo contains src for multiple built artefacts. Tags exist for each type of
+artefact:
+
+foo-app-1.0.8-20180711120000
+foo-app-1.0.10-20180711120000 # (ver 1.0.10)
+bar-app-1.0.3-20180711120000
+bar-app-1.0.10-20180711120000 # (ver. 1.0.10 as above, but different app)
+bar-app-2.1.10-20180711120000
+
+If I want the latest bar-app, I should use a filter pattern like:
+
+`^bar\-app\-(\d+\.\d+\.\d+)` # if we know the semver ALWAYS follows a set prefix
+
+OR
+
+`^bar\-app\-(.*)\-\d+$` # match of semver based on known suffix and prefix format.
+
+OR
+
+`^bar\-app\-(\d+\.\d+\.\d+)\-\d+$` # strict format of desired tag string.
+
+The following patterns are bad:
+
+`(\d+\.\d+\.\d+)`        # will match all foo-app tags as well.
+`.*\-(\d\.\d+\.\d+)\-.*` # will match all foo-bar tags as well.
+`bar-app\-(.*)`          # will assume the timestamp suffix is part of the semver string.
+
+* pattern MUST contain EXACTLY ONE capture group to match the semver.
+
+* all other parts of the pattern are to identify which tags are relevant.
 
 * Account for when no tag meeting a constraint exists - should fail, not default
   to latest.
+
+* Account for when many tags meet a pattern - should fail and tell user to
+  tighten up the pattern.
+
+  e.g. if tags are foo01-1.0.11-20180711120000 and bar01-1.0.11-some-string,
+  the pattern `.*-SEMVER-.*`, both tags get matched with SEMVER of 1.0.11.
 
 ## end-to-end tests
 
@@ -22,7 +64,9 @@ before x.y.z (can be a \., \- or \_, or no delimiter)
 
 * correct docco.
 
-# IN PROGRESS
+* stop fetching tags if only need a commit or branch!
+
+* abstract API calls so can work for different git providers e.g. gitlab
 
 ## rename to ghget | glget | bbget (it's shorter)
 
@@ -34,6 +78,8 @@ for new variants such as bbfetch. At which point maybe my colleagues will speak
 to me again.
 
 Still need to rename all vars, methods that use Fetch to use something else.
+
+# IN PROGRESS
 
 # DONE
 
@@ -119,3 +165,8 @@ unverified download are deleted.
 
 On success the downloaded .asc is deleted.
 
+## NOTES ON SEMVER
+
+valid semver pattern
+
+v?\d+\.\d+\.\d+(\-[\w]+[-\w\.]*)?(+[\w]+[-\w\.]*)?

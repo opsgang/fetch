@@ -210,7 +210,7 @@ func TestFilterTags(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tags := o.filterTags(tc.resps)
+		tags := o.filterReleaseTags(tc.resps)
 		if !reflect.DeepEqual(tags, tc.result) {
 			t.Fatalf("tags string did not match for %#v\n\tGot %#v", tc, tags)
 		}
