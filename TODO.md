@@ -1,5 +1,18 @@
 # TODO
 
+## coverage report
+
+## unit vs integration tests
+
+Currently most tests are hitting real github repos - should be mocking.
+Also some funcs e.g. TestGetGithubReleaseInfo() are not testing the unit
+but running an additional func during test. Lazy - the func being tested
+should be the only thing being run.
+
+We need to add a lot more mocks - per test, run http server per test
+to provide the mock (if not already done) - see example in
+github_test.go where s.URL is used to refer to stub server api
+
 ## --tag-regex (filter)
 
 NEED a repo with release assets we can use filter with.

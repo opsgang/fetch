@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"regexp"
 
 	"github.com/hashicorp/go-version"
 )
@@ -29,6 +30,13 @@ Ambiguous results: multiple tags match your regex:
 - %s
 `
 
+type tagRegexMatching struct {
+	matcher      *regexp.Regexp	   // semver matcher
+	tags         []string		   // tag list retrieved from github
+	filteredTags []string		   // list of tags that satisfied regex
+	semverToTag  map[string]string // lookup for original full tag, keyed on semver string
+}
+
 /*
 Instead of setting _regexOn to true, options should be created in main and fetch for passing a regex
 pattern should be compiled from user's string and replacement of token str SEMVER AND compiled
@@ -40,42 +48,24 @@ If validation passed, o.regexMatch should have a value of semverMatcher e.g. sem
 func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
 
 	var tagsToCheck []string
-	var semverToTag map[string]string = make(map[string]string)
+	var semverToTag map[string]string
 
+	// ... if user set --tag-regex pattern
 	if o.tagRegex != "" {
-
-		var semverGroupIndex int
-
-		// used to check if multiple tags yield same semver string (fail)
-		// and ultimately to return actual tag to retrieve.
-
-		namedGroups := o.semverMatcher.SubexpNames() // slice of named groups
-		// for all tags, find ones that match pattern
-
-		// ... find capture group for semver str
-		for i, name := range namedGroups {
-			if name == "semver" {
-				semverGroupIndex = i
-				break
-			}
+		t := tagRegexMatching{
+			matcher:      o.semverMatcher,
+			tags:         tags,
+			filteredTags: make([]string, 0),
+			semverToTag:  make(map[string]string),
 		}
 
-		for _, tag := range tags {
-			matches := o.semverMatcher.FindStringSubmatch(tag)
-			if len(matches) >= semverGroupIndex+1 { // got a match
-				fmt.Println("matched " + tag + ":[" + matches[semverGroupIndex] + "]")
-				semver := matches[semverGroupIndex]
-				// check if a previously regexed tag yielded same semver
-				if v, ok := semverToTag[matches[semverGroupIndex]]; ok {
-					return tag, fmt.Errorf(
-						AMBIGUOUS_REGEX,
-						strings.Join([]string{tag, v}, "\n- "),
-					)
-				}
-				tagsToCheck = append(tagsToCheck, semver)
-				semverToTag[semver] = tag
-			}
+		if err = t.filterTagsByRegex() ; err != nil {
+			return "", err
+		} else {
+			tagsToCheck = t.filteredTags
+			semverToTag = t.semverToTag
 		}
+
 	} else {
 		tagsToCheck = tags
 	}
@@ -90,6 +80,48 @@ func (o *fetchOpts) tagToGet(tags []string) (tag string, err error) {
 	}
 
 	return
+}
+
+func (t *tagRegexMatching) filterTagsByRegex() (err error) {
+	var semverGroupIndex int
+
+	// ... used to check if multiple tags yield same semver string (fail)
+	// and ultimately to return actual tag to retrieve.
+
+	namedGroups := t.matcher.SubexpNames() // slice of named groups
+	// for all tags, find ones that match pattern
+
+	// ... determine which capture group in regex is for semver str
+	for i, name := range namedGroups {
+		if name == "semver" {
+			semverGroupIndex = i
+			break
+		}
+	}
+
+	for _, tag := range t.tags {
+
+		matches := t.matcher.FindStringSubmatch(tag)
+
+		if len(matches) >= semverGroupIndex + 1 { // got a match
+
+			fmt.Println("matched " + tag + ":[" + matches[semverGroupIndex] + "]")
+			semver := matches[semverGroupIndex]
+
+			// check if a previously regexed tag yielded same semver
+			if v, ok := t.semverToTag[matches[semverGroupIndex]]; ok {
+				return fmt.Errorf(
+					AMBIGUOUS_REGEX,
+					strings.Join([]string{tag, v}, "\n- "),
+				)
+			}
+
+			t.filteredTags = append(t.filteredTags, semver)
+			t.semverToTag[semver] = tag
+		}
+	}
+
+	return err
 }
 
 func (o *fetchOpts) determineAppropriateSemver(tags []string) (tag string, err error) {

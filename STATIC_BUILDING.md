@@ -23,11 +23,10 @@
         glide install || exit 1
 
         echo "... building static binary $GOBIN/fetch"
-        go build \
-          --ldflags "-linkmode external -extldflags \"-static\" -X main.VERSION=$GIT_REF" \
-          -o $GOBIN/fetch \
-          . \
-        || exit 1
+        # -w is to drop debugging related symbols etc for smaller binary
+        ts=$(date '+%Y%m%d%H%M%S')
+        ldf="-w -extldflags \"-static\" -X main.VERSION=$GIT_REF -X main.TIMESTAMP=build-$ts"
+        go build --ldflags "$ldf" -o $GOBIN/fetch . || exit 1
 
         echo "... basic verification that binary works"
         fetch --help || exit 1

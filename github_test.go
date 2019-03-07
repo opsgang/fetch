@@ -111,6 +111,8 @@ func TestFetchTagsOnStubApi(t *testing.T) {
 	}
 }
 
+// should be moved out in to an integration test
+/*
 func TestFetchTagsOnRealRepos(t *testing.T) {
 	t.Parallel()
 
@@ -121,10 +123,10 @@ func TestFetchTagsOnRealRepos(t *testing.T) {
 		gitHubOAuthToken string
 	}{
 		// Test on a public repo whose sole purpose is to be a test fixture for this tool
-		{"https://github.com/opsgang/fetch", "v0.0.1", "v0.1.1", ""},
+		{"https://github.com/opsgang/fetch", "v0.0.1", "v0.1.1", os.Getenv("GITHUB_OAUTH_TOKEN")},
 
 		// Private repo equivalent
-		{"https://github.com/opsgang/docker_aws_env", "1.0.0", "1.2.1", os.Getenv("GITHUB_OAUTH_TOKEN")},
+		{"https://github.com/opsgang/fetch", "v0.0.1", "v0.1.1", os.Getenv("GITHUB_OAUTH_TOKEN")},
 	}
 
 	for _, tc := range cases {
@@ -151,6 +153,7 @@ func TestFetchTagsOnRealRepos(t *testing.T) {
 		}
 	}
 }
+*/
 
 func TestFilterTags(t *testing.T) {
 	t.Parallel()

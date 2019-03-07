@@ -1,5 +1,7 @@
 package main
 
+// point tests to stub server by using s.URL where s is the *httptest.Server global instance
+
 import (
 	"fmt"
 	"io"
